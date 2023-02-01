@@ -32,7 +32,7 @@ class TestPageMethods(unittest.TestCase):
         for value_to_insert in values_to_insert:
             self.assertTrue(page.insert_value(value_to_insert, offset))
             column_value: int = page.get_column_value(offset)
-            self.assertEquals(
+            self.assertEqual(
                 first=column_value,
                 second=value_to_insert,
                 msg=f"Expected: {value_to_insert} Received: {column_value}")
