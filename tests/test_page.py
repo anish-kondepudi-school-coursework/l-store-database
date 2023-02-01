@@ -3,16 +3,14 @@ from lstore import PhysicalPage, PHYSICAL_PAGE_SIZE, ATTRIBUTE_SIZE
 
 class TestPageMethods(unittest.TestCase):
 
-    max_number_of_records: int = PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
-
     def test_insert_value_for_valid_offsets(self) -> None:
         page: PhysicalPage = PhysicalPage()
-        for offset in range(TestPageMethods.max_number_of_records):
+        for offset in range(PhysicalPage.max_number_of_records):
             self.assertTrue(page.insert_value(123, offset))
 
     def test_insert_value_for_invalid_offsets(self) -> None:
         page: PhysicalPage = PhysicalPage()
-        self.assertFalse(page.insert_value(123, TestPageMethods.max_number_of_records))
+        self.assertFalse(page.insert_value(123, PhysicalPage.max_number_of_records))
         self.assertFalse(page.insert_value(123, -1))
 
     def test_insert_value_for_invalid_integers(self) -> None:
