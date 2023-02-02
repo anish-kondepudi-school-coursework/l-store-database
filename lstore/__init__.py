@@ -1,14 +1,16 @@
 from .config import (
-    PHYSICAL_PAGE_SIZE, 
-    ATTRIBUTE_SIZE, 
-    INDIRECTION_COLUMN, 
-    INVALID_OFFSET, 
-    INVALID_RID
+    PHYSICAL_PAGE_SIZE,
+    ATTRIBUTE_SIZE,
+    INDIRECTION_COLUMN,
+    INVALID_OFFSET,
+    INVALID_RID,
+    MAX_BASE_PAGES_IN_PAGE_RANGE
 )
 from .page import (
-    PhysicalPage, 
-    LogicalPage, 
-    BasePage, 
+    PhysicalPage,
+    LogicalPage,
+    BasePage,
     TailPage
 )
 from .rid import RID_Generator
+from .page_range import PageRange
