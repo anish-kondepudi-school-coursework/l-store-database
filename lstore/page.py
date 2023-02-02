@@ -1,20 +1,29 @@
-from .config import PHYSICAL_PAGE_SIZE, ATTRIBUTE_SIZE, INDIRECTION_COLUMN, INVALID_OFFSET
+from .config import(
+    PHYSICAL_PAGE_SIZE, 
+    ATTRIBUTE_SIZE, 
+    INDIRECTION_COLUMN, 
+    INVALID_OFFSET, 
+    INVALID_RID
+)
+from .rid import RID_Generator
 
 class LogicalPage:
 
-    def __init__(self, num_cols: int):
+    def __init__(self, num_cols: int, rid_generator: RID_Generator):
         self.num_cols = num_cols
         self.phys_pages = [PhysicalPage() for _ in range(self.num_cols)]
         self.available_chunks = [index for index in range(PhysicalPage.max_number_of_records)]
+        self.rid_generator = rid_generator
     
-    def insert_record(self, columns: list) -> int:
+    def insert_record(self, columns: list) -> tuple:
         if self.is_full():
-            return INVALID_OFFSET
+            return INVALID_RID, INVALID_OFFSET
         offset = self.available_chunks.pop()
         for ind in range(self.num_cols):
-            if columns[ind]:
+            if columns[ind] != None:
                 self.phys_pages[ind].insert_value(columns[ind], offset)
-        return offset
+        new_rid = self.rid_generator.new_rid()
+        return new_rid, offset
 
     def is_full(self) -> bool:
         return len(self.available_chunks) == 0
