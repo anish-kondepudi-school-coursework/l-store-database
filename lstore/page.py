@@ -28,6 +28,13 @@ class LogicalPage:
     def is_full(self) -> bool:
         return len(self.available_chunks) == 0
 
+    def get_column_of_record(self, column_index: int, offset: int) -> int:
+        assert self.__is_valid_column_index(column_index)
+        return self.phys_pages[column_index].get_column_value(offset)
+    
+    def __is_valid_column_index(self, column_index: int) -> bool:
+        return 0 <= column_index < self.num_cols
+
 class BasePage(LogicalPage):
 
     def update_indir_of_record(self, new_value: int, offset: int) -> bool:
@@ -35,13 +42,7 @@ class BasePage(LogicalPage):
         return phys_page_of_indir.insert_value(new_value, offset)
 
 class TailPage(LogicalPage):
-
-    def get_column_of_record(self, column_index: int, offset: int) -> int:
-        assert self.__is_valid_column_index(column_index)
-        return self.phys_pages[column_index].get_column_value(offset)
-    
-    def __is_valid_column_index(self, column_index: int) -> bool:
-        return 0 <= column_index < self.num_cols
+    pass
 
 class PhysicalPage:
 

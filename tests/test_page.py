@@ -62,8 +62,11 @@ class TestLogicalPage(unittest.TestCase):
         self.values_to_insert: list[int] = None
         self.rid_generator = None
 
+    def init_page(self) -> LogicalPage:
+        return LogicalPage(self.num_cols, self.rid_generator)
+
     def test_insert_record(self) -> None:
-        page: LogicalPage = LogicalPage(self.num_cols, self.rid_generator)
+        page: LogicalPage = self.init_page()
         rid, offset = page.insert_record(self.values_to_insert)
         self.assertNotEqual(rid, INVALID_RID)
         self.assertNotEqual(offset, INVALID_OFFSET)
@@ -73,7 +76,7 @@ class TestLogicalPage(unittest.TestCase):
             self.assertEqual(given_col, exp_col)
 
     def test_insert_record_into_full_page(self) -> None:
-        page: LogicalPage = LogicalPage(self.num_cols, self.rid_generator)
+        page: LogicalPage = self.init_page()
         for _ in range(PhysicalPage.max_number_of_records):
             page.insert_record(self.values_to_insert)
         rid, offset = page.insert_record(self.values_to_insert)
@@ -81,16 +84,35 @@ class TestLogicalPage(unittest.TestCase):
         self.assertEqual(offset, INVALID_OFFSET)
 
     def test_is_full(self) -> None:
-        page: LogicalPage = LogicalPage(self.num_cols, self.rid_generator)
+        page: LogicalPage = self.init_page()
         for _ in range(PhysicalPage.max_number_of_records):
             self.assertFalse(page.is_full())
             page.insert_record(self.values_to_insert)
         self.assertTrue(page.is_full())
 
+    def test_get_column(self):
+        page: LogicalPage = self.init_page()
+        _, offset = page.insert_record(self.values_to_insert)
+        for ind in range(self.num_cols):
+            given_col = page.get_column_of_record(ind, offset)
+            exp_col = self.values_to_insert[ind]
+            self.assertEqual(given_col, exp_col)
+        
+    def test_get_column_invalid_index(self):
+        page: LogicalPage = self.init_page()
+        _, offset = page.insert_record(self.values_to_insert)
+        with self.assertRaises(AssertionError):
+            page.get_column_of_record(self.num_cols+1, offset)
+        with self.assertRaises(AssertionError):
+            page.get_column_of_record(-1, offset)
+
 class TestBasePage(TestLogicalPage):
     
+    def init_page(self) -> BasePage:
+        return BasePage(self.num_cols, self.rid_generator)
+
     def test_update_indir(self) -> None:
-        page: BasePage = BasePage(self.num_cols, self.rid_generator)
+        page: BasePage = self.init_page()
         _, offset = page.insert_record(self.values_to_insert)
         new_indir_val = 5
         res = page.update_indir_of_record(new_indir_val, offset)
@@ -99,23 +121,8 @@ class TestBasePage(TestLogicalPage):
         self.assertEqual(given_indir_val, new_indir_val)
     
 class TestTailPage(TestLogicalPage):
-
-    def test_get_column(self):
-        page: TailPage = TailPage(self.num_cols, self.rid_generator)
-        _, offset = page.insert_record(self.values_to_insert)
-        for ind in range(self.num_cols):
-            given_col = page.get_column_of_record(ind, offset)
-            exp_col = self.values_to_insert[ind]
-            self.assertEqual(given_col, exp_col)
-        
-    def test_get_column_invalid_index(self):
-        page: TailPage = TailPage(self.num_cols, self.rid_generator)
-        _, offset = page.insert_record(self.values_to_insert)
-        with self.assertRaises(AssertionError):
-            page.get_column_of_record(self.num_cols+1, offset)
-        with self.assertRaises(AssertionError):
-            page.get_column_of_record(-1, offset)
-        
+    def init_page(self) -> TailPage:
+        return TailPage(self.num_cols, self.rid_generator)
 
 if __name__ == '__main__':
     unittest.main()
