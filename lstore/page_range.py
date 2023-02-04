@@ -31,7 +31,7 @@ class PageRange():
             self.base_pages.append(new_base_page)
             latest_base_page = new_base_page
 
-        rid, offset = latest_base_page.insert_record(columns + [0, 0]) # schema encoding and indirectory set to 0
+        rid, offset = latest_base_page.insert_record(columns + [0, 0]) # schema encoding and indirection set to 0
         latest_base_page.update_indir_of_record(rid, offset)
         self.page_directory[rid] = latest_base_page, offset
         return rid
@@ -50,7 +50,7 @@ class PageRange():
             self.tail_pages.append(new_tail_page)
             latest_tail_page = new_tail_page
 
-        # Create new record to insert (replace NULL values with previous records values)
+        # Create new record to insert (replace NULL values with previous record's values)
         new_tail_record_columns = []
         updated_column_indices = []
         for old_col, new_col in zip(latest_record_columns, columns_to_update):
@@ -72,13 +72,12 @@ class PageRange():
         new_tail_page_rid, new_tail_page_offset = latest_tail_page.insert_record(new_tail_record_columns)
         self.page_directory[new_tail_page_rid] = latest_tail_page, new_tail_page_offset
 
-        # Update indirectory of base record to point to latest tail record
+        # Update indirection of base record to point to latest tail record
         base_page, base_page_offset = self.__get_page_and_offset(base_rid)
         base_page.update_indir_of_record(new_tail_page_rid, base_page_offset)
 
         return new_tail_page_rid
 
-    # CUMULATIVE
     def get_latest_column_value(self, base_rid: int, column_index: int) -> int:
         page, offset, _ = self.__get_latest_record_details(base_rid)
         column_value = page.get_column_of_record(column_index, offset)
