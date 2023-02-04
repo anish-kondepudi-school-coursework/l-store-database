@@ -43,30 +43,25 @@ class PageRange():
         latest_page, latest_page_offset, latest_record_rid = self.__get_latest_record_details(base_rid)
         latest_record_columns: list[int] = [latest_page.get_column_of_record(ind, latest_page_offset) for ind in range(self.num_attr_cols)]
 
+        # Create new record to insert (replace NULL values with previous record's values)
+        new_tail_record_columns = []
+        for ind, (old_col, new_col) in enumerate(zip(latest_record_columns, columns_to_update)):
+            new_tail_record_columns.append(old_col if new_col == None else new_col)
+
+        # Construct schema encoding integer for new record
+        schema_encoding_integer = 0
+        for ind, col in enumerate(columns_to_update):
+            schema_encoding_integer |= 1 << (self.num_attr_cols - ind - 1) if col != None else 0
+
+        new_tail_record_columns.append(schema_encoding_integer)
+        new_tail_record_columns.append(latest_record_rid)
+
         # Find latest tail page to insert next version of record
         latest_tail_page: TailPage = self.tail_pages[-1]
         if latest_tail_page.is_full():
             new_tail_page = TailPage(self.num_total_cols, self.rid_generator)
             self.tail_pages.append(new_tail_page)
             latest_tail_page = new_tail_page
-
-        # Create new record to insert (replace NULL values with previous record's values)
-        new_tail_record_columns = []
-        updated_column_indices = []
-        for old_col, new_col in zip(latest_record_columns, columns_to_update):
-            if new_col != None:
-                updated_column_indices.append(1)
-                new_tail_record_columns.append(new_col)
-            else:
-                updated_column_indices.append(0)
-                new_tail_record_columns.append(old_col)
-
-        # Construct schema encoding integer for new record
-        schema_encoding_binary_string: str = ''.join(map(str,updated_column_indices))
-        schema_encoding_integer: int = int(schema_encoding_binary_string, base=2)
-
-        new_tail_record_columns.append(schema_encoding_integer)
-        new_tail_record_columns.append(latest_record_rid)
 
         # Insert new record and update page directory
         new_tail_page_rid, new_tail_page_offset = latest_tail_page.insert_record(new_tail_record_columns)
@@ -97,12 +92,12 @@ class PageRange():
 
     def __get_latest_record_details(self, base_rid: int) -> tuple[BasePage,int,int] | tuple[TailPage,int,int]:
         base_page, base_page_offset = self.__get_page_and_offset(base_rid)
-        base_page_indir_rid: int = base_page.get_column_of_record(INDIRECTION_COLUMN, base_page_offset)
-        if base_rid == base_page_indir_rid:
+        base_record_indir_rid: int = base_page.get_column_of_record(INDIRECTION_COLUMN, base_page_offset)
+        if base_rid == base_record_indir_rid:
             return base_page, base_page_offset, base_rid
 
-        tail_page, tail_page_offset = self.__get_page_and_offset(base_page_indir_rid)
-        return tail_page, tail_page_offset, base_page_indir_rid
+        tail_page, tail_page_offset = self.__get_page_and_offset(base_record_indir_rid)
+        return tail_page, tail_page_offset, base_record_indir_rid
 
     def __get_page_and_offset(self, rid: int) -> tuple[BasePage,int] | tuple[TailPage,int]:
         page, offset = self.page_directory.get(rid, (None, INVALID_OFFSET))
