@@ -1,4 +1,5 @@
 import unittest
+import random
 from lstore import (
     BasePage,
     TailPage,
@@ -9,7 +10,6 @@ from lstore import (
     ATTRIBUTE_SIZE,
     INVALID_RID
 )
-import random
 
 class TestPageRange(unittest.TestCase):
 
