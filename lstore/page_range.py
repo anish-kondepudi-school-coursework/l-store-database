@@ -5,17 +5,18 @@ from .config import (
     INDIRECTION_COLUMN,
     NUMBER_OF_METADATA_COLUMNS
 )
-from .page import LogicalPage, BasePage, TailPage
+from .page import BasePage, TailPage
+from .page_directory import PageDirectory
 from .rid import RID_Generator
 
 class PageRange():
 
-    def __init__(self, num_cols: list[int], page_directory: dict[int,tuple[LogicalPage,int]], rid_generator: RID_Generator):
+    def __init__(self, num_cols: list[int], rid_generator: RID_Generator):
         self.num_attr_cols: int = num_cols
         self.num_total_cols: int = num_cols + NUMBER_OF_METADATA_COLUMNS
         self.base_pages: list[BasePage] = [BasePage(self.num_total_cols, rid_generator)]
         self.tail_pages: list[TailPage] = [TailPage(self.num_total_cols, rid_generator)]
-        self.page_directory: dict[int,tuple[BasePage,int]] | dict[int,tuple[TailPage,int]] = page_directory
+        self.page_directory: PageDirectory = PageDirectory()
         self.rid_generator: RID_Generator = rid_generator
 
     def is_full(self) -> bool:
@@ -33,7 +34,7 @@ class PageRange():
 
         rid, offset = latest_base_page.insert_record(columns + [0, 0]) # schema encoding and indirection set to 0
         latest_base_page.update_indir_of_record(rid, offset)
-        self.page_directory[rid] = latest_base_page, offset
+        self.page_directory.insert_page(rid, latest_base_page, offset)
         return rid
 
     def update_record(self, base_rid: int, columns_to_update: list[int]) -> int:
@@ -65,10 +66,10 @@ class PageRange():
 
         # Insert new record and update page directory
         new_tail_page_rid, new_tail_page_offset = latest_tail_page.insert_record(new_tail_record_columns)
-        self.page_directory[new_tail_page_rid] = latest_tail_page, new_tail_page_offset
+        self.page_directory.insert_page(new_tail_page_rid, latest_tail_page, new_tail_page_offset)
 
         # Update indirection of base record to point to latest tail record
-        base_page, base_page_offset = self.__get_page_and_offset(base_rid)
+        base_page, base_page_offset = self.page_directory.get_page(base_rid)
         base_page.update_indir_of_record(new_tail_page_rid, base_page_offset)
 
         return new_tail_page_rid
@@ -82,7 +83,7 @@ class PageRange():
         curr_rid: int = base_rid
         tail_chain = []
         while True:
-            page, offset = self.__get_page_and_offset(curr_rid)
+            page, offset = self.page_directory.get_page(curr_rid)
             record = [page.get_column_of_record(ind, offset) for ind in range(self.num_total_cols)]
             tail_chain.append((curr_rid, record))
             curr_rid = page.get_column_of_record(INDIRECTION_COLUMN, offset)
@@ -91,15 +92,10 @@ class PageRange():
         return tail_chain
 
     def __get_latest_record_details(self, base_rid: int) -> tuple[BasePage,int,int] | tuple[TailPage,int,int]:
-        base_page, base_page_offset = self.__get_page_and_offset(base_rid)
+        base_page, base_page_offset = self.page_directory.get_page(base_rid)
         base_record_indir_rid: int = base_page.get_column_of_record(INDIRECTION_COLUMN, base_page_offset)
         if base_rid == base_record_indir_rid:
             return base_page, base_page_offset, base_rid
 
-        tail_page, tail_page_offset = self.__get_page_and_offset(base_record_indir_rid)
+        tail_page, tail_page_offset = self.page_directory.get_page(base_record_indir_rid)
         return tail_page, tail_page_offset, base_record_indir_rid
-
-    def __get_page_and_offset(self, rid: int) -> tuple[BasePage,int] | tuple[TailPage,int]:
-        page, offset = self.page_directory.get(rid, (None, INVALID_OFFSET))
-        assert page != None and offset != INVALID_OFFSET
-        return page, offset
