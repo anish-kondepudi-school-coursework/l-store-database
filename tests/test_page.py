@@ -1,13 +1,14 @@
 import unittest
 from lstore import (
-    PhysicalPage, 
-    LogicalPage, 
-    BasePage, 
-    TailPage, 
-    ATTRIBUTE_SIZE, 
-    INDIRECTION_COLUMN, 
-    INVALID_OFFSET, 
-    INVALID_RID, 
+    PhysicalPage,
+    LogicalPage,
+    BasePage,
+    TailPage,
+    ATTRIBUTE_SIZE,
+    INDIRECTION_COLUMN,
+    INVALID_OFFSET,
+    INVALID_RID,
+    SCHEMA_ENCODING_COLUMN,
     RID_Generator
 )
 
@@ -97,17 +98,21 @@ class TestLogicalPage(unittest.TestCase):
             given_col = page.get_column_of_record(ind, offset)
             exp_col = self.values_to_insert[ind]
             self.assertEqual(given_col, exp_col)
-        
+        for ind in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN):
+            given_col = page.get_column_of_record(ind, offset)
+            exp_col = self.values_to_insert[ind]
+            self.assertEqual(given_col, exp_col)
+
     def test_get_column_invalid_index(self):
         page: LogicalPage = self.init_page()
         _, offset = page.insert_record(self.values_to_insert)
         with self.assertRaises(AssertionError):
             page.get_column_of_record(self.num_cols+1, offset)
         with self.assertRaises(AssertionError):
-            page.get_column_of_record(-1, offset)
+            page.get_column_of_record(-3, offset)
 
 class TestBasePage(TestLogicalPage):
-    
+
     def init_page(self) -> BasePage:
         return BasePage(self.num_cols, self.rid_generator)
 
@@ -119,7 +124,7 @@ class TestBasePage(TestLogicalPage):
         self.assertTrue(res)
         given_indir_val = page.phys_pages[INDIRECTION_COLUMN].get_column_value(offset)
         self.assertEqual(given_indir_val, new_indir_val)
-    
+
 class TestTailPage(TestLogicalPage):
     def init_page(self) -> TailPage:
         return TailPage(self.num_cols, self.rid_generator)
