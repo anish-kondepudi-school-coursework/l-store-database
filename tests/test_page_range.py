@@ -137,7 +137,7 @@ class TestPageRange(unittest.TestCase):
                 Found {len(page_range.tail_pages)} tail page(s)"
         )
 
-    def __verify_tail_chain(self, page_range: PageRange, base_rid: int, expected_tail_chain: list[tuple[int,list[int]]]) -> None:
+    def __verify_tail_chain(self, page_range: PageRange, base_rid: int, expected_tail_chain) -> None:
         actual_tail_chain = page_range._get_tail_chain(base_rid)
         self.assertEqual(
             first=len(actual_tail_chain),

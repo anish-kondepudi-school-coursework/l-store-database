@@ -7,7 +7,18 @@ class Index:
     def __init__(self, table):
         # One index for each table. All our empty initially.
         self.indices = [None] *  table.num_columns
-        pass
+        self.key_to_rid = {}
+
+    def add_key_rid(self, key, rid):
+        self.key_to_rid[key] = rid 
+    
+    def get_rid(self, key):
+        assert key in self.key_to_rid
+        return self.key_to_rid[key]
+    
+    def delete_key(self, key):
+        assert key in self.key_to_rid
+        del self.key_to_rid[key]
 
     """
     # returns the location of all records with the given value on column "column"
