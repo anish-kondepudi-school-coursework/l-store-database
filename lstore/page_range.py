@@ -1,6 +1,7 @@
 from .config import (
     MAX_BASE_PAGES_IN_PAGE_RANGE,
     INVALID_RID,
+    INVALID_OFFSET,
     INDIRECTION_COLUMN,
     NUMBER_OF_METADATA_COLUMNS
 )
@@ -10,7 +11,7 @@ from .rid import RID_Generator
 
 class PageRange():
 
-    def __init__(self, num_cols: list[int], rid_generator: RID_Generator):
+    def __init__(self, num_cols: int, rid_generator: RID_Generator):
         self.num_attr_cols: int = num_cols
         self.num_total_cols: int = num_cols + NUMBER_OF_METADATA_COLUMNS
         self.base_pages: list[BasePage] = [BasePage(self.num_total_cols, rid_generator)]
@@ -21,7 +22,7 @@ class PageRange():
     def is_full(self) -> bool:
         return len(self.base_pages) == MAX_BASE_PAGES_IN_PAGE_RANGE and self.base_pages[-1].is_full()
 
-    def insert_column(self, columns: list[int]) -> int:
+    def insert_record(self, columns: list[int]) -> int:
         if self.is_full():
             return INVALID_RID
 
@@ -92,6 +93,7 @@ class PageRange():
 
     def __get_latest_record_details(self, base_rid: int) -> tuple[BasePage,int,int] | tuple[TailPage,int,int]:
         base_page, base_page_offset = self.page_directory.get_page(base_rid)
+        assert base_page != None and base_page_offset != INVALID_OFFSET
         base_record_indir_rid: int = base_page.get_column_of_record(INDIRECTION_COLUMN, base_page_offset)
         if base_rid == base_record_indir_rid:
             return base_page, base_page_offset, base_rid

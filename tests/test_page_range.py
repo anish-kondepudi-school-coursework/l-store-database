@@ -27,7 +27,7 @@ class TestPageRange(unittest.TestCase):
         page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
         for _ in range(self.max_base_page_records_per_page_range):
             self.assertFalse(page_range.is_full())
-            page_range.insert_column([9,4,14])
+            page_range.insert_record([9,4,14])
         self.assertTrue(page_range.is_full())
 
     def test_insert_column(self) -> None:
@@ -36,7 +36,7 @@ class TestPageRange(unittest.TestCase):
         records_to_verify: list[int, list[int]] = []
         for _ in range(self.max_base_page_records_per_page_range):
             random_record = [random.getrandbits(ATTRIBUTE_SIZE) for _ in range (self.num_cols)]
-            rid = page_range.insert_column(random_record)
+            rid = page_range.insert_record(random_record)
             self.__verify_record_retrieval(page_range, rid, random_record + [0, rid])
             records_to_verify.append((rid, random_record))
 
@@ -48,14 +48,14 @@ class TestPageRange(unittest.TestCase):
 
         for _ in range(self.max_base_page_records_per_page_range):
             random_record = [random.getrandbits(ATTRIBUTE_SIZE) for _ in range (self.num_cols)]
-            rid = page_range.insert_column(random_record)
+            rid = page_range.insert_record(random_record)
             self.assertNotEqual(
                 first=rid,
                 second=INVALID_RID,
                 msg=f"Expected valid RID but received invalid RID. Received rid of {rid}"
             )
 
-        rid = page_range.insert_column(random_record)
+        rid = page_range.insert_record(random_record)
         self.assertEqual(
             first=rid,
             second=INVALID_RID,
@@ -64,18 +64,18 @@ class TestPageRange(unittest.TestCase):
 
     def test_get_latest_column_value_after_insert(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
-        base_rid = page_range.insert_column([1,2,3])
+        base_rid = page_range.insert_record([1,2,3])
         self.__verify_record_retrieval(page_range, base_rid, [1,2,3,0b000,base_rid])
 
     def test_get_latest_column_value_after_update(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
-        base_rid = page_range.insert_column([1,2,3])
+        base_rid = page_range.insert_record([1,2,3])
         page_range.update_record(base_rid, [None, 5, None])
         self.__verify_record_retrieval(page_range, base_rid, [1,5,3,0b010,base_rid])
 
     def test_update_record_for_small_number_of_updates(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
-        base_rid = page_range.insert_column([1,2,3])
+        base_rid = page_range.insert_record([1,2,3])
         self.__verify_record_retrieval(page_range, base_rid, [1,2,3,0b000,base_rid])
         tail_rid1 = page_range.update_record(base_rid, [None, 5, None])
         self.__verify_record_retrieval(page_range, base_rid, [1,5,3,0b010,base_rid])
@@ -97,7 +97,7 @@ class TestPageRange(unittest.TestCase):
         multiplier: int = 2
 
         page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
-        base_rid = page_range.insert_column([1,2,3])
+        base_rid = page_range.insert_record([1,2,3])
 
         previous_tail_rid = base_rid
         for _ in range (self.max_base_page_records_per_page_range * multiplier):
