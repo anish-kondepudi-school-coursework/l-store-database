@@ -17,3 +17,4 @@ from .rid import RID_Generator
 from .page_range import PageRange
 from .page_directory import PageDirectory
 from .table import Table
+from .index import Index
