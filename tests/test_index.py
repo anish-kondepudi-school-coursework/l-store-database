@@ -1,8 +1,7 @@
 import unittest
-# todo: order imports correctly
 from lstore import (
-    Table,
-    Index
+    Index,
+    Table
 )
 
 class TestIndex(unittest.TestCase):
@@ -14,6 +13,13 @@ class TestIndex(unittest.TestCase):
     @classmethod
     def tearDownClass(self):
         self.table: Table = None
+
+    def test_add_duplicate_key(self) -> None:
+        index: Index = Index(self.table)
+        repeated_key = 1
+        index.add_key_rid(repeated_key, 2)
+        with self.assertRaises(AssertionError):
+            index.add_key_rid(repeated_key, 3)
 
     def test_get_existent_key(self) -> None:
         index: Index = Index(self.table)

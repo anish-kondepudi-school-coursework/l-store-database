@@ -3,20 +3,20 @@ A data strucutre holding indices for various columns of a table. Key column shou
 """
 
 class Index:
-
     def __init__(self, table):
         # One index for each table. All our empty initially.
-        self.indices = [None] *  table.num_columns
-        self.key_to_rid = {}
+        self.indices : list = [None] *  table.num_columns
+        self.key_to_rid : dict = {}
 
-    def add_key_rid(self, key, rid):
+    def add_key_rid(self, key: int, rid: int):
+        assert key not in self.key_to_rid
         self.key_to_rid[key] = rid 
     
-    def get_rid(self, key):
+    def get_rid(self, key: int):
         assert key in self.key_to_rid
         return self.key_to_rid[key]
     
-    def delete_key(self, key):
+    def delete_key(self, key: int):
         assert key in self.key_to_rid
         del self.key_to_rid[key]
 
