@@ -6,7 +6,7 @@ class PageDirectory():
     def __init__(self) -> None:
         self.page_directory: dict[int,tuple[BasePage,int]] | dict[int,tuple[TailPage,int]] = dict()
 
-    def get_page(self, rid: int) -> tuple[BasePage,int]:
+    def get_page(self, rid: int):
         return self.page_directory.get(rid, (None, INVALID_OFFSET))
 
     def insert_page(self, rid: int, base_page: BasePage, base_record_offset: int) -> None:
