@@ -11,18 +11,18 @@ from .rid import RID_Generator
 
 class PageRange():
 
-    def __init__(self, num_cols: int, rid_generator: RID_Generator):
+    def __init__(self, num_cols: int, page_directory: PageDirectory, rid_generator: RID_Generator):
         self.num_attr_cols: int = num_cols
         self.num_total_cols: int = num_cols + NUMBER_OF_METADATA_COLUMNS
         self.base_pages: list[BasePage] = [BasePage(self.num_total_cols, rid_generator)]
         self.tail_pages: list[TailPage] = [TailPage(self.num_total_cols, rid_generator)]
-        self.page_directory: PageDirectory = PageDirectory()
+        self.page_directory: PageDirectory = page_directory
         self.rid_generator: RID_Generator = rid_generator
 
     def is_full(self) -> bool:
         return len(self.base_pages) == MAX_BASE_PAGES_IN_PAGE_RANGE and self.base_pages[-1].is_full()
 
-    def insert_record(self, columns: list[int]) -> int:
+    def insert_record(self, columns: list) -> int:
         if self.is_full():
             return INVALID_RID
 
@@ -37,7 +37,7 @@ class PageRange():
         self.page_directory.insert_page(rid, latest_base_page, offset)
         return rid
 
-    def update_record(self, base_rid: int, columns_to_update: list[int]) -> int:
+    def update_record(self, base_rid: int, columns_to_update: list) -> int:
         assert len(columns_to_update) == self.num_attr_cols
 
         # Find latest version of record (may be in Base or Tail page)
@@ -79,7 +79,7 @@ class PageRange():
         column_value = page.get_column_of_record(column_index, offset)
         return column_value
 
-    def _get_tail_chain(self, base_rid: int) -> list[tuple[int,list[int]]]:
+    def _get_tail_chain(self, base_rid: int):
         curr_rid: int = base_rid
         tail_chain = []
         while True:
@@ -91,7 +91,7 @@ class PageRange():
                 break
         return tail_chain
 
-    def __get_latest_record_details(self, base_rid: int) -> tuple[BasePage,int,int] | tuple[TailPage,int,int]:
+    def __get_latest_record_details(self, base_rid: int):
         base_page, base_page_offset = self.page_directory.get_page(base_rid)
         assert base_page != None and base_page_offset != INVALID_OFFSET
         base_record_indir_rid: int = base_page.get_column_of_record(INDIRECTION_COLUMN, base_page_offset)

@@ -1,6 +1,7 @@
 import unittest
 import random
 from lstore import (
+    PageDirectory,
     PageRange,
     RID_Generator,
     MAX_BASE_PAGES_IN_PAGE_RANGE,
@@ -15,6 +16,7 @@ class TestPageRange(unittest.TestCase):
     def setUpClass(self):
         self.num_cols: int = 3
         self.rid_generator: RID_Generator = RID_Generator()
+        self.page_directory: PageDirectory = PageDirectory()
         self.max_base_page_records_per_page_range: int = MAX_BASE_PAGES_IN_PAGE_RANGE * (PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE)
 
     @classmethod
@@ -24,16 +26,16 @@ class TestPageRange(unittest.TestCase):
         self.max_base_page_records_per_page_range: int = None
 
     def test_is_full(self) -> None:
-        page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator)
         for _ in range(self.max_base_page_records_per_page_range):
             self.assertFalse(page_range.is_full())
             page_range.insert_record([9,4,14])
         self.assertTrue(page_range.is_full())
 
     def test_insert_column(self) -> None:
-        page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator)
 
-        records_to_verify: list[int, list[int]] = []
+        records_to_verify: list = []
         for _ in range(self.max_base_page_records_per_page_range):
             random_record = [random.getrandbits(ATTRIBUTE_SIZE) for _ in range (self.num_cols)]
             rid = page_range.insert_record(random_record)
@@ -44,7 +46,7 @@ class TestPageRange(unittest.TestCase):
             self.__verify_record_retrieval(page_range, rid, expected_record + [0, rid])
 
     def test_insert_column_when_page_range_full(self) -> None:
-        page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator)
 
         for _ in range(self.max_base_page_records_per_page_range):
             random_record = [random.getrandbits(ATTRIBUTE_SIZE) for _ in range (self.num_cols)]
@@ -63,18 +65,18 @@ class TestPageRange(unittest.TestCase):
         )
 
     def test_get_latest_column_value_after_insert(self) -> None:
-        page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator)
         base_rid = page_range.insert_record([1,2,3])
         self.__verify_record_retrieval(page_range, base_rid, [1,2,3,0b000,base_rid])
 
     def test_get_latest_column_value_after_update(self) -> None:
-        page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator)
         base_rid = page_range.insert_record([1,2,3])
         page_range.update_record(base_rid, [None, 5, None])
         self.__verify_record_retrieval(page_range, base_rid, [1,5,3,0b010,base_rid])
 
     def test_update_record_for_small_number_of_updates(self) -> None:
-        page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator)
         base_rid = page_range.insert_record([1,2,3])
         self.__verify_record_retrieval(page_range, base_rid, [1,2,3,0b000,base_rid])
         tail_rid1 = page_range.update_record(base_rid, [None, 5, None])
@@ -96,7 +98,7 @@ class TestPageRange(unittest.TestCase):
     def test_update_record_for_large_number_of_updates(self) -> None:
         multiplier: int = 2
 
-        page_range: PageRange = PageRange(self.num_cols, self.rid_generator)
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator)
         base_rid = page_range.insert_record([1,2,3])
 
         previous_tail_rid = base_rid
@@ -137,7 +139,7 @@ class TestPageRange(unittest.TestCase):
                 Found {len(page_range.tail_pages)} tail page(s)"
         )
 
-    def __verify_tail_chain(self, page_range: PageRange, base_rid: int, expected_tail_chain: list[tuple[int,list[int]]]) -> None:
+    def __verify_tail_chain(self, page_range: PageRange, base_rid: int, expected_tail_chain: list) -> None:
         actual_tail_chain = page_range._get_tail_chain(base_rid)
         self.assertEqual(
             first=len(actual_tail_chain),
@@ -156,7 +158,7 @@ class TestPageRange(unittest.TestCase):
                 msg=f"Record columns differ. Expected: {expected_record} Received: {actual_record}"
             )
 
-    def __verify_record_retrieval(self, page_range: PageRange, rid: int, expected_record: list[int]) -> None:
+    def __verify_record_retrieval(self, page_range: PageRange, rid: int, expected_record: list) -> None:
         for ind in range(self.num_cols):
             actual_col_val: int = page_range.get_latest_column_value(rid, ind)
             expected_col_val: int = expected_record[ind]
