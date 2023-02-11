@@ -16,7 +16,7 @@ class TestIndex(unittest.TestCase):
 
     def test_add_duplicate_key(self) -> None:
         index: Index = Index(self.table)
-        repeated_key = 1
+        repeated_key: int = 1
         index.add_key_rid(repeated_key, 2)
         with self.assertRaises(AssertionError):
             index.add_key_rid(repeated_key, 3)
@@ -34,7 +34,14 @@ class TestIndex(unittest.TestCase):
         with self.assertRaises(AssertionError):
             index.get_rid(1)
 
-    def test_delete_existent_key(self):
+    def test_key_exists(self) -> None:
+        index: Index = Index(self.table)
+        key: int = 1
+        self.assertFalse(index.key_exists(key))
+        index.add_key_rid(key, 2)
+        self.assertTrue(index.key_exists(key))
+
+    def test_delete_existent_key(self) -> None:
         index: Index = Index(self.table)
         key: int = 1
         rid: int = 2
@@ -43,7 +50,7 @@ class TestIndex(unittest.TestCase):
         with self.assertRaises(AssertionError):
             index.get_rid(key)
 
-    def test_delete_nonexistent_key(self):
+    def test_delete_nonexistent_key(self) -> None:
         index: Index = Index(self.table)
         with self.assertRaises(AssertionError):
             index.delete_key(1)

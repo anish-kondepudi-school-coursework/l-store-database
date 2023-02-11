@@ -16,7 +16,7 @@ class LogicalPage:
         self.available_chunks = [index for index in range(PhysicalPage.max_number_of_records)]
         self.rid_generator = rid_generator
 
-    def insert_record(self, columns: list) -> tuple:
+    def insert_record(self, columns: list[int]) -> tuple[int, int]:
         if self.is_full():
             return INVALID_RID, INVALID_OFFSET
         offset = self.available_chunks.pop()

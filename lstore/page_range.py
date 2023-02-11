@@ -22,7 +22,7 @@ class PageRange():
     def is_full(self) -> bool:
         return len(self.base_pages) == MAX_BASE_PAGES_IN_PAGE_RANGE and self.base_pages[-1].is_full()
 
-    def insert_record(self, columns: list) -> int:
+    def insert_record(self, columns: list[int]) -> int:
         if self.is_full():
             return INVALID_RID
 
@@ -37,7 +37,7 @@ class PageRange():
         self.page_directory.insert_page(rid, latest_base_page, offset)
         return rid
 
-    def update_record(self, base_rid: int, columns_to_update: list) -> int:
+    def update_record(self, base_rid: int, columns_to_update: list[int]) -> int:
         assert len(columns_to_update) == self.num_attr_cols
 
         # Find latest version of record (may be in Base or Tail page)
@@ -79,7 +79,7 @@ class PageRange():
         column_value = page.get_column_of_record(column_index, offset)
         return column_value
 
-    def _get_tail_chain(self, base_rid: int):
+    def _get_tail_chain(self, base_rid: int) -> list[tuple[int,list[int]]]:
         curr_rid: int = base_rid
         tail_chain = []
         while True:
@@ -91,7 +91,7 @@ class PageRange():
                 break
         return tail_chain
 
-    def __get_latest_record_details(self, base_rid: int):
+    def __get_latest_record_details(self, base_rid: int) -> tuple[BasePage,int,int] | tuple[TailPage,int,int]:
         base_page, base_page_offset = self.page_directory.get_page(base_rid)
         assert base_page != None and base_page_offset != INVALID_OFFSET
         base_record_indir_rid: int = base_page.get_column_of_record(INDIRECTION_COLUMN, base_page_offset)
