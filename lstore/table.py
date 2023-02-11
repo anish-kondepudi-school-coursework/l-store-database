@@ -56,9 +56,8 @@ class Table:
         self.index.add_key_rid(columns[self.primary_key_col], rid)
         return page_range_with_record.update_record(rid, columns) != INVALID_RID
 
-    def get_latest_column_values(self, primary_key: int, projected_columns_index: list):
+    def get_latest_column_values(self, rid: int, projected_columns_index: list):
         assert len(projected_columns_index) == self.num_columns
-        rid: int = self.index.get_rid(primary_key)
         page_range: PageRange = self.__find_page_range_with_rid(rid)
         col_vals: list = []
         for col_ind in range(self.num_columns):
@@ -71,6 +70,10 @@ class Table:
         page_range_index: int = rid // NUM_RECORDS_IN_PAGE_RANGE
         assert 0 <= page_range_index < len(self.page_ranges)
         return self.page_ranges[page_range_index]
+
+    def get_indirection_value(self, rid: int):
+        page_range: PageRange = self.__find_page_range_with_rid(rid)
+        return page_range.get_latest_column_value(rid,-1)
 
     def __merge(self):
         print("merge is happening")

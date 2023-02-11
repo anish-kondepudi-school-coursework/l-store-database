@@ -30,8 +30,10 @@ class Query:
     # Returns False if insert fails for whatever reason
     """
     def insert(self, *columns):
-        schema_encoding = '0' * self.table.num_columns
-        pass
+        columnList=list(columns)
+        result = self.table.insert_record(columnList)
+        #schema_encoding = '0' * self.table.num_columns
+        assert(result)
 
     
     """
@@ -58,8 +60,22 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
     def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
-        pass
-
+        columnsList: list = []
+        ridList: list = []
+        recordList: list = []
+        if(search_key_index!=self.table.primary_key_col):
+            #Convert secondary key to list of primary keys
+            ridList.append(search_key)
+        else:
+            ridList.append(self.table.index.get_rid(search_key))
+        for rid in ridList:
+            for relativeVersion in range(0, abs(relative_version)):
+                rid=self.table.get_indirection_value(rid)
+            columnsList.append(self.table.get_latest_column_values(rid, projected_columns_index))
+        for columns in columnsList:
+            record = Record(rid, search_key, columns)
+            recordList.append(record)
+        return recordList
     
     """
     # Update a record with specified key and columns
