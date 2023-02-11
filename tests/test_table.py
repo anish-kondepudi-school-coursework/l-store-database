@@ -73,10 +73,11 @@ class TestTable(unittest.TestCase):
         self._test_all_get_column_possibilities(new_prim_key, table, new_record)
 
     def _test_all_get_column_possibilities(self, prim_key, table, record):
-        self.assertEqual(table.get_latest_column_values(prim_key, [0, 0]), [])
-        self.assertEqual(table.get_latest_column_values(prim_key, [0, 1]), [record[1]])
-        self.assertEqual(table.get_latest_column_values(prim_key, [1, 0]), [record[0]])
-        self.assertEqual(table.get_latest_column_values(prim_key, [1, 1]), record)
+        rid: int = table.index.get_rid(prim_key)
+        self.assertEqual(table.get_latest_column_values(rid, [0, 0]), [])
+        self.assertEqual(table.get_latest_column_values(rid, [0, 1]), [record[1]])
+        self.assertEqual(table.get_latest_column_values(rid, [1, 0]), [record[0]])
+        self.assertEqual(table.get_latest_column_values(rid, [1, 1]), record)
 
     def test_get_latest_column_values_nonexisting_record(self):
         table: Table = Table('table1', 2, self.primary_key_col)
@@ -100,7 +101,7 @@ class TestTable(unittest.TestCase):
         with self.assertRaises(AssertionError):
             table.update_record(record[self.primary_key_col], record)
         with self.assertRaises(AssertionError):
-            table.get_latest_column_values(record[self.primary_key_col], [1])
+            table.get_latest_column_values(table.index.get_rid(record[self.primary_key_col]), [1])
     
     def test_delete_non_existing_record(self):
         table: Table = Table('table1', 2, self.primary_key_col)
