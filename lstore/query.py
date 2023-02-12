@@ -32,8 +32,8 @@ class Query:
     def insert(self, *columns):
         columnList=list(columns)
         result = self.table.insert_record(columnList)
-        #schema_encoding = '0' * self.table.num_columns
         assert(result)
+        return result
 
     
     """
@@ -83,7 +83,15 @@ class Query:
     # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
     """
     def update(self, primary_key, *columns):
-        pass
+        columnList=list(columns)
+        record1 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], 0)[0]
+        result = self.table.update_record(primary_key,columnList)
+        assert(result)
+        record2 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], -1)[0]
+        print(record1.columns)
+        print(record2.columns)
+        assert(record1.columns == record2.columns)
+        return result
 
     
     """

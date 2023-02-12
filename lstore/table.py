@@ -53,7 +53,11 @@ class Table:
         rid: int = self.index.get_rid(primary_key)
         page_range_with_record: PageRange = self.__find_page_range_with_rid(rid)
         self.index.delete_key(primary_key)
-        self.index.add_key_rid(columns[self.primary_key_col], rid)
+        #print(columns)
+        newPrimaryKey: int = primary_key
+        if columns[self.primary_key_col]!= None:
+            newPrimaryKey = columns[self.primary_key_col]
+        self.index.add_key_rid(newPrimaryKey, rid)
         return page_range_with_record.update_record(rid, columns) != INVALID_RID
 
     def get_latest_column_values(self, rid: int, projected_columns_index: list):

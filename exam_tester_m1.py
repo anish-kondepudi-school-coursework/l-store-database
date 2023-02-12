@@ -49,7 +49,7 @@ for key in records:
     else:
         pass
         # print('select on', key, ':', record)
-assert(False)
+
 updated_records = {}
 for key in records:
     updated_columns = [None, None, None, None, None]
@@ -94,6 +94,7 @@ for key in records:
             error = True
     if error:
         print('update error on', records[key], 'and', updated_columns, ':', record, ', correct:', updated_records[key])
+assert(False)
 
 keys = sorted(list(records.keys()))
 # aggregate on every column 
