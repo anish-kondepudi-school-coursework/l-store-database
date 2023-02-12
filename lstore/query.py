@@ -21,7 +21,11 @@ class Query:
     # Return False if record doesn't exist or is locked due to 2PL
     """
     def delete(self, primary_key):
-        pass
+        try:
+            self.table.delete_record(primary_key)
+        except AssertionError:
+            return False
+        return True
     
     
     """
@@ -84,13 +88,16 @@ class Query:
     """
     def update(self, primary_key, *columns):
         columnList=list(columns)
-        record1 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], 0)[0]
+        #record1 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], 0)[0]
         result = self.table.update_record(primary_key,columnList)
         assert(result)
-        record2 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], -1)[0]
-        print(record1.columns)
-        print(record2.columns)
-        assert(record1.columns == record2.columns)
+        #record2 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], -2)[0]
+        #rid = self.table.index.get_rid(primary_key)
+        #print(rid, " | " ,self.table.get_indirection_value(rid))
+        #print(record1.columns)
+        #print(record2.columns)
+        #print(self.table.page_ranges[0].base_pages[0].get_column_of_record(-1,0) )
+        #assert(record1.columns == record2.columns)
         return result
 
     
@@ -103,7 +110,7 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum(self, start_range, end_range, aggregate_column_index):
-        pass
+        return self.sum_version(start_range, end_range, aggregate_column_index, 0)
 
     
     """
@@ -116,9 +123,25 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum_version(self, start_range, end_range, aggregate_column_index, relative_version):
-        pass
-
-    
+        aggregateSum: int = 0
+        anyRecords: bool = False
+        column_index_list: list =[]
+        for index in range(0, self.table.num_columns):
+            if index == aggregate_column_index:
+                column_index_list.append(1)
+            else:
+                column_index_list.append(0)
+        print
+        for key in range(start_range, end_range+1):
+            try:
+                record = self.select_version(key, self.table.primary_key_col, column_index_list, relative_version)
+                aggregateSum+=record[0].columns[0]
+                anyRecords=True
+            except:
+                continue
+        if anyRecords==False:
+            return False
+        return aggregateSum
     """
     incremenets one column of the record
     this implementation should work if your select and update queries already work
