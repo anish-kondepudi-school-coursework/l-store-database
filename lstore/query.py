@@ -35,7 +35,11 @@ class Query:
     """
     def insert(self, *columns):
         columnList=list(columns)
-        result = self.table.insert_record(columnList)
+        result: bool
+        try:
+            result = self.table.insert_record(columnList)
+        except AssertionError:
+            return False
         return result
 
     
@@ -89,7 +93,7 @@ class Query:
         columnList=list(columns)
         #record1 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], 0)[0]
         result = self.table.update_record(primary_key,columnList)
-        assert(result)
+        #assert(result)
         #record2 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], -2)[0]
         #rid = self.table.index.get_rid(primary_key)
         #print(rid, " | " ,self.table.get_indirection_value(rid))
@@ -130,7 +134,6 @@ class Query:
                 column_index_list.append(1)
             else:
                 column_index_list.append(0)
-        print
         for key in range(start_range, end_range+1):
             try:
                 record = self.select_version(key, self.table.primary_key_col, column_index_list, relative_version)
@@ -150,10 +153,10 @@ class Query:
     # Returns False if no record matches key or if target record is locked by 2PL.
     """
     def increment(self, key, column):
-        r = self.select(key, self.table.primary_key_col, [1] * self.table.num_columns)[0]
-        if r is not False:
+        record = self.select(key, self.table.primary_key_col, [1] * self.table.num_columns)[0]
+        if record is not False:
             updated_columns = [None] * self.table.num_columns
-            updated_columns[column] = r.columns[column] + 1
-            u = self.update(key, *updated_columns)
-            return u
+            updated_columns[column] = record.columns[column] + 1
+            update_status = self.update(key, *updated_columns)
+            return update_status
         return False
