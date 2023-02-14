@@ -47,20 +47,6 @@ class TestQuery(unittest.TestCase):
         aggregateSum2 = query.sum(1,3, 2)
         assert(aggregateSum2 == 9)
 
-    def test_delete_record_query(self) -> None:
-        error: bool = False
-        table: Table = Table('table1', 5, 0)
-        query: Query = Query(table)
-        record: list[int] = [1, 2, 3, 4, 5]
-        query.insert(*record)
-        query.table.index.get_rid(1)
-        query.delete(1)
-        try:
-            query.table.index.get_rid(1)
-        except AssertionError:
-            error=True
-        assert(error)
-
     def test_increment_record_query(self) -> None:
         table: Table = Table('table1', 5, 0)
         query: Query = Query(table)

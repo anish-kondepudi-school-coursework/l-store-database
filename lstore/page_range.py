@@ -4,7 +4,8 @@ from .config import (
     INVALID_OFFSET,
     INDIRECTION_COLUMN,
     SCHEMA_ENCODING_COLUMN,
-    NUMBER_OF_METADATA_COLUMNS
+    NUMBER_OF_METADATA_COLUMNS,
+    LOGICAL_DELETE
 )
 from .page import LogicalPage, BasePage, TailPage
 from .page_directory import PageDirectory
@@ -23,6 +24,17 @@ class PageRange():
 
     def is_full(self) -> bool:
         return len(self.base_pages) == MAX_BASE_PAGES_IN_PAGE_RANGE and self.base_pages[-1].is_full()
+
+    def invalidate_record(self, base_rid: int):
+        curr_rid: int = base_rid
+        tail_chain = []
+        while True:
+            page, offset = self.page_directory.get_page(curr_rid)
+            curr_rid = page.get_column_of_record(INDIRECTION_COLUMN, offset)
+            page.update_indir_of_record(LOGICAL_DELETE, offset)
+            if curr_rid == base_rid:
+                break
+        return tail_chain
 
     def insert_record(self, columns: list) -> int:
         if self.is_full():

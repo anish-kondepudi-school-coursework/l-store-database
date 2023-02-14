@@ -111,19 +111,19 @@ class TestLogicalPage(unittest.TestCase):
         with self.assertRaises(AssertionError):
             page.get_column_of_record(-3, offset)
 
-class TestBasePage(TestLogicalPage):
-
-    def init_page(self) -> BasePage:
-        return BasePage(self.num_cols, self.rid_generator)
-
     def test_update_indir(self) -> None:
-        page: BasePage = self.init_page()
+        page: LogicalPage = self.init_page()
         _, offset = page.insert_record(self.values_to_insert)
         new_indir_val = 5
         res = page.update_indir_of_record(new_indir_val, offset)
         self.assertTrue(res)
         given_indir_val = page.phys_pages[INDIRECTION_COLUMN].get_column_value(offset)
         self.assertEqual(given_indir_val, new_indir_val)
+
+class TestBasePage(TestLogicalPage):
+
+    def init_page(self) -> BasePage:
+        return BasePage(self.num_cols, self.rid_generator)
 
 class TestTailPage(TestLogicalPage):
     def init_page(self) -> TailPage:

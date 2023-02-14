@@ -16,7 +16,7 @@ class LogicalPage:
         self.available_chunks = [index for index in range(PhysicalPage.max_number_of_records)]
         self.rid_generator = rid_generator
 
-    def insert_record(self, columns: list[int]) -> tuple[int, int]:
+    def insert_record(self, columns: list):
         if self.is_full():
             return INVALID_RID, INVALID_OFFSET
         offset = self.available_chunks.pop()
@@ -33,14 +33,15 @@ class LogicalPage:
         assert self.__is_valid_column_index(column_index)
         return self.phys_pages[column_index].get_column_value(offset)
 
+    def update_indir_of_record(self, new_value: int, offset: int) -> bool:
+        phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
+        return phys_page_of_indir.insert_value(new_value, offset)
+
     def __is_valid_column_index(self, column_index: int) -> bool:
         return (0 <= column_index < self.num_cols) or (column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN))
 
 class BasePage(LogicalPage):
-
-    def update_indir_of_record(self, new_value: int, offset: int) -> bool:
-        phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
-        return phys_page_of_indir.insert_value(new_value, offset)
+    pass
 
 class TailPage(LogicalPage):
     pass

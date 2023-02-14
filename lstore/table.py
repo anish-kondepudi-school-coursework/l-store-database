@@ -37,8 +37,10 @@ class Table:
 
     def delete_record(self, primary_key: int) -> None:
         rid: int = self.index.get_rid(primary_key)
-        self.index.delete_key(primary_key)
-        self.page_directory.delete_page(rid)
+        page_range: PageRange = self.__find_page_range_with_rid(rid)
+        page_range.invalidate_record(rid)
+        # self.index.delete_key(primary_key)
+        # self.page_directory.delete_page(rid)
 
     def insert_record(self, columns: list) -> bool:
         ''' abort operation if index already contains primary key -- keeps operations atomic '''

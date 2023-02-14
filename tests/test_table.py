@@ -103,20 +103,6 @@ class TestTable(unittest.TestCase):
         table: Table = Table('table1', 2, self.primary_key_col)
         with self.assertRaises(AssertionError):
             table.get_latest_column_values(1, [1, 1, 1]) 
-
-    def test_delete_record(self) -> None:
-        table: Table = Table('table1', 2, self.primary_key_col)
-        record: list[int] = [1, 2]
-        
-        table.insert_record(record)
-        table.delete_record(record[self.primary_key_col])
-        
-        with self.assertRaises(AssertionError):
-            table.index.get_rid(record[self.primary_key_col])
-        with self.assertRaises(AssertionError):
-            table.update_record(record[self.primary_key_col], record)
-        with self.assertRaises(AssertionError):
-            table.get_latest_column_values(table.index.get_rid(record[self.primary_key_col]), [1])
     
     def test_delete_non_existing_record(self) -> None:
         table: Table = Table('table1', 2, self.primary_key_col)

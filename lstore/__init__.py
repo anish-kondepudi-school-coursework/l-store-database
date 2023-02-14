@@ -5,7 +5,8 @@ from .config import (
     INVALID_OFFSET,
     INVALID_RID,
     MAX_BASE_PAGES_IN_PAGE_RANGE,
-    SCHEMA_ENCODING_COLUMN
+    SCHEMA_ENCODING_COLUMN,
+    LOGICAL_DELETE
 )
 from .page import (
     PhysicalPage,

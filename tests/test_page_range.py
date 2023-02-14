@@ -7,7 +7,9 @@ from lstore import (
     MAX_BASE_PAGES_IN_PAGE_RANGE,
     PHYSICAL_PAGE_SIZE,
     ATTRIBUTE_SIZE,
-    INVALID_RID
+    INVALID_RID,
+    INDIRECTION_COLUMN,
+    LOGICAL_DELETE
 )
 
 class TestCumulativePageRange(unittest.TestCase):
@@ -24,6 +26,26 @@ class TestCumulativePageRange(unittest.TestCase):
         self.num_cols: int = None
         self.rid_generator: RID_Generator = None
         self.max_base_page_records_per_page_range: int = None
+
+    def test_invalidate_record(self):
+        page_dir: PageDirectory = PageDirectory()
+        page_range: PageRange = PageRange(self.num_cols, page_dir, self.rid_generator, True)
+        record = [1, 2, 3]
+        base_rid = page_range.insert_record(record)
+        record_update1 = [None, 4, None]
+        tail_rid1 = page_range.update_record(base_rid, record_update1)
+        record_update2 = [5, None, None]
+        tail_rid2 = page_range.update_record(base_rid, record_update2)
+        page_range.invalidate_record(base_rid)
+        base_record, offset = page_dir.get_page(base_rid)
+        base_indir_value = base_record.get_column_of_record(INDIRECTION_COLUMN, offset)
+        tail_record1, offset_tail1 = page_dir.get_page(base_rid)
+        tail1_indir_value = tail_record1.get_column_of_record(INDIRECTION_COLUMN, offset_tail1)
+        tail_record2, offset_tail2 = page_dir.get_page(base_rid)
+        tail2_indir_value = tail_record2.get_column_of_record(INDIRECTION_COLUMN, offset_tail2)
+        self.assertEqual(base_indir_value, LOGICAL_DELETE)
+        self.assertEqual(tail1_indir_value, LOGICAL_DELETE)
+        self.assertEqual(tail2_indir_value, LOGICAL_DELETE)
 
     def test_is_full(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, True)
@@ -189,6 +211,26 @@ class TestNonCumulativePageRange(unittest.TestCase):
             self.assertFalse(page_range.is_full())
             page_range.insert_record([9,4,14])
         self.assertTrue(page_range.is_full())
+
+    def test_invalidate_record(self):
+        page_dir: PageDirectory = PageDirectory()
+        page_range: PageRange = PageRange(self.num_cols, page_dir, self.rid_generator, False)
+        record = [1, 2, 3]
+        base_rid = page_range.insert_record(record)
+        record_update1 = [None, 4, None]
+        tail_rid1 = page_range.update_record(base_rid, record_update1)
+        record_update2 = [5, None, None]
+        tail_rid2 = page_range.update_record(base_rid, record_update2)
+        page_range.invalidate_record(base_rid)
+        base_record, offset = page_dir.get_page(base_rid)
+        base_indir_value = base_record.get_column_of_record(INDIRECTION_COLUMN, offset)
+        tail_record1, offset_tail1 = page_dir.get_page(base_rid)
+        tail1_indir_value = tail_record1.get_column_of_record(INDIRECTION_COLUMN, offset_tail1)
+        tail_record2, offset_tail2 = page_dir.get_page(base_rid)
+        tail2_indir_value = tail_record2.get_column_of_record(INDIRECTION_COLUMN, offset_tail2)
+        self.assertEqual(base_indir_value, LOGICAL_DELETE)
+        self.assertEqual(tail1_indir_value, LOGICAL_DELETE)
+        self.assertEqual(tail2_indir_value, LOGICAL_DELETE)
 
     def test_insert_column(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, False)

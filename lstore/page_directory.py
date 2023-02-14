@@ -4,7 +4,7 @@ from .page import BasePage, TailPage
 class PageDirectory():
 
     def __init__(self) -> None:
-        self.page_directory: dict[int,tuple[BasePage,int]] | dict[int,tuple[TailPage,int]] = dict()
+        self.page_directory = dict()
 
     def get_page(self, rid: int):
         return self.page_directory.get(rid, (None, INVALID_OFFSET))
