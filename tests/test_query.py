@@ -75,7 +75,6 @@ class TestQuery(unittest.TestCase):
         assert aggregateSum1 == 6
         query.delete(2)
         aggregateSum2 = query.sum(1, 3, 1)
-        print(aggregateSum2)
         assert aggregateSum2 == 4
 
     def test_aggregate_record_none_in_range_query(self) -> None:
