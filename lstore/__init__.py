@@ -6,14 +6,9 @@ from .config import (
     INVALID_RID,
     MAX_BASE_PAGES_IN_PAGE_RANGE,
     SCHEMA_ENCODING_COLUMN,
-    LOGICAL_DELETE
+    LOGICAL_DELETE,
 )
-from .page import (
-    PhysicalPage,
-    LogicalPage,
-    BasePage,
-    TailPage
-)
+from .page import PhysicalPage, LogicalPage, BasePage, TailPage
 from .rid import RID_Generator
 from .page_range import PageRange
 from .page_directory import PageDirectory

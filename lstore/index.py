@@ -3,10 +3,11 @@ A data structure holding indices for various columns of a table. Key column shou
 """
 import lstore.table as Table
 
+
 class Index:
     def __init__(self, table: Table):
         # One index for each table. All our empty initially.
-        self.indices : list = [None] *  table.num_columns
+        self.indices: list = [None] * table.num_columns
         self.key_to_rid = dict()
 
     def add_key_rid(self, key: int, rid: int) -> None:

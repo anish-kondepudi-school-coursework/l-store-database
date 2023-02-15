@@ -9,12 +9,11 @@ from lstore import (
     INVALID_OFFSET,
     INVALID_RID,
     SCHEMA_ENCODING_COLUMN,
-    RID_Generator
+    RID_Generator,
 )
 
 
 class TestPhysPage(unittest.TestCase):
-
     def test_insert_value_for_valid_offsets(self) -> None:
         page: PhysicalPage = PhysicalPage()
         for offset in range(PhysicalPage.max_number_of_records):
@@ -29,7 +28,7 @@ class TestPhysPage(unittest.TestCase):
         page: PhysicalPage = PhysicalPage()
 
         offset: int = ATTRIBUTE_SIZE
-        values_to_insert: list[int] = [-1 * 2**63 -1, 2**63]
+        values_to_insert: list[int] = [-1 * 2**63 - 1, 2**63]
 
         for value_to_insert in values_to_insert:
             with self.assertRaises(OverflowError):
@@ -47,10 +46,11 @@ class TestPhysPage(unittest.TestCase):
             self.assertEqual(
                 first=column_value,
                 second=value_to_insert,
-                msg=f"Expected: {value_to_insert} Received: {column_value}")
+                msg=f"Expected: {value_to_insert} Received: {column_value}",
+            )
+
 
 class TestLogicalPage(unittest.TestCase):
-
     @classmethod
     def setUpClass(self):
         self.num_cols: int = 3
@@ -107,7 +107,7 @@ class TestLogicalPage(unittest.TestCase):
         page: LogicalPage = self.init_page()
         _, offset = page.insert_record(self.values_to_insert)
         with self.assertRaises(AssertionError):
-            page.get_column_of_record(self.num_cols+1, offset)
+            page.get_column_of_record(self.num_cols + 1, offset)
         with self.assertRaises(AssertionError):
             page.get_column_of_record(-3, offset)
 
@@ -120,14 +120,16 @@ class TestLogicalPage(unittest.TestCase):
         given_indir_val = page.phys_pages[INDIRECTION_COLUMN].get_column_value(offset)
         self.assertEqual(given_indir_val, new_indir_val)
 
-class TestBasePage(TestLogicalPage):
 
+class TestBasePage(TestLogicalPage):
     def init_page(self) -> BasePage:
         return BasePage(self.num_cols, self.rid_generator)
+
 
 class TestTailPage(TestLogicalPage):
     def init_page(self) -> TailPage:
         return TailPage(self.num_cols, self.rid_generator)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

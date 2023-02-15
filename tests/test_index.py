@@ -1,11 +1,8 @@
 import unittest
-from lstore import (
-    Index,
-    Table
-)
+from lstore import Index, Table
+
 
 class TestIndex(unittest.TestCase):
-    
     @classmethod
     def setUpClass(self):
         self.table: Table = Table("table1", 3, 0)
@@ -28,7 +25,7 @@ class TestIndex(unittest.TestCase):
         index.add_key_rid(key, rid)
         given_rid: int = index.get_rid(key)
         self.assertEqual(given_rid, rid)
-    
+
     def test_get_nonexistent_key(self) -> None:
         index: Index = Index(self.table)
         with self.assertRaises(AssertionError):
@@ -55,5 +52,6 @@ class TestIndex(unittest.TestCase):
         with self.assertRaises(AssertionError):
             index.delete_key(1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

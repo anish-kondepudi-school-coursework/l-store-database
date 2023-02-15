@@ -20,7 +20,7 @@
 #     return cols
 
 # if __name__ == '__main__':
-    
+
 #     page_range = PageRange(6, PageDirectory(), RID_Generator(), False)
 #     record = [1, 2, 3, 4, 5, 6]
 #     new_record = [1, 2, 3, 4, 5, 6]
@@ -33,7 +33,7 @@
 #                 new_record[j] = random.randint(1, 1213)
 #                 record[j] = new_record[j]
 #             else:
-#                 new_record[j] = None 
+#                 new_record[j] = None
 #         #print("New record: ", new_record)
 #         #print("Record: ", record)
 #         page_range.update_record(1, new_record)
@@ -42,7 +42,6 @@
 #         for j in range(6):
 #             assert record[j] == given_cols[j]
 
-    
 
 import unittest
 import random
@@ -53,9 +52,9 @@ from lstore import (
     MAX_BASE_PAGES_IN_PAGE_RANGE,
     PHYSICAL_PAGE_SIZE,
     ATTRIBUTE_SIZE,
-    INVALID_RID
+    INVALID_RID,
 )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
