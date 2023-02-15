@@ -10,6 +10,7 @@ from .config import (
 from .page import LogicalPage, BasePage, TailPage
 from .page_directory import PageDirectory
 from .rid import RID_Generator
+from typing import Tuple
 
 class PageRange():
 
@@ -25,6 +26,8 @@ class PageRange():
     def is_full(self) -> bool:
         return len(self.base_pages) == MAX_BASE_PAGES_IN_PAGE_RANGE and self.base_pages[-1].is_full()
 
+    # note that for milestone the record will never actually be deleted, only invalidated
+    # in the future record will be removed during merge cycles
     def invalidate_record(self, base_rid: int):
         curr_rid: int = base_rid
         tail_chain = []
@@ -59,7 +62,7 @@ class PageRange():
         latest_record_columns: list[int] = [latest_page.get_column_of_record(ind, latest_page_offset) for ind in range(self.num_attr_cols)]
 
         new_tail_record_columns = []
-        if self.cumulative:  
+        if self.cumulative:
             for ind, (old_col, new_col) in enumerate(zip(latest_record_columns, columns_to_update)):
                 new_tail_record_columns.append(old_col if new_col == None else new_col)
         else:
@@ -109,11 +112,11 @@ class PageRange():
             page, offset = self.page_directory.get_page(next_page_rid)
             if next_page_rid == base_rid:
                 break
-        column_value = page.get_column_of_record(column_index, offset) 
+        column_value = page.get_column_of_record(column_index, offset)
         return column_value
 
     def record_has_most_recent_col_value(self, page: LogicalPage, offset: int, column_index: int):
-        schema_encoding_value = page.get_column_of_record(SCHEMA_ENCODING_COLUMN, offset) 
+        schema_encoding_value = page.get_column_of_record(SCHEMA_ENCODING_COLUMN, offset)
         column_index_in_schema_encoding = self.num_attr_cols - column_index - 1
         return (schema_encoding_value >> column_index_in_schema_encoding) % 2 == 0
 
@@ -128,8 +131,8 @@ class PageRange():
             if curr_rid == base_rid:
                 break
         return tail_chain
-    
-    def __get_latest_record_details(self, base_rid: int):
+
+    def __get_latest_record_details(self, base_rid: int) -> Tuple[LogicalPage, int, int]:
         base_page, base_page_offset = self.__get_base_page_of_record(base_rid)
         base_record_indir_rid: int = base_page.get_column_of_record(INDIRECTION_COLUMN, base_page_offset)
         if base_rid == base_record_indir_rid:
@@ -137,8 +140,10 @@ class PageRange():
 
         tail_page, tail_page_offset = self.page_directory.get_page(base_record_indir_rid)
         return tail_page, tail_page_offset, base_record_indir_rid
-    
-    def __get_base_page_of_record(self, base_rid):
+
+    # note, we should consider making sure that the page retrieved is a BasePage object
+    # rather than a parent LogicalPage
+    def __get_base_page_of_record(self, base_rid) -> Tuple[BasePage, int]:
         base_page, base_page_offset = self.page_directory.get_page(base_rid)
         assert base_page != None and base_page_offset != INVALID_OFFSET
         return base_page, base_page_offset
