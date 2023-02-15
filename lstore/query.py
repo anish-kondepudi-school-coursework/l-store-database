@@ -69,14 +69,14 @@ class Query:
         columnsList: list = []
         ridList: list = []
         recordList: list = []
-        if(search_key_index!=self.table.primary_key_col):
+        #if(search_key_index!=self.table.primary_key_col):
             #Convert secondary key to list of primary keys
-            ridList.append(search_key)
-        else:
-            ridList.append(self.table.index.get_rid(search_key))
+            #ridList.append(search_key)
+        #else:
+        ridList.append(self.table.index.get_rid(search_key))
         for rid in ridList:
-            for _ in range(0, abs(relative_version)):
-                rid=self.table.get_indirection_value(rid)
+            #for _ in range(0, abs(relative_version)):
+                #rid=self.table.get_indirection_value(rid)
             columnsList.append(self.table.get_latest_column_values(rid, projected_columns_index))
         for columns in columnsList:
             record = Record(rid, search_key, columns)
