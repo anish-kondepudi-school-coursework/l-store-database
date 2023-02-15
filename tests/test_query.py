@@ -61,8 +61,7 @@ class TestQuery(unittest.TestCase):
         assert(aggregateSum1 == 6)
         aggregateSum2 = query.sum(1,3, 2)
         assert(aggregateSum2 == 9)
-        
-    """
+
     def test_aggregate_record_delete_query(self) -> None:
         table: Table = Table('table1', 5, 0)
         query: Query = Query(table)
@@ -75,10 +74,9 @@ class TestQuery(unittest.TestCase):
         aggregateSum1 = query.sum(1,3, 1)
         assert(aggregateSum1 == 6)
         query.delete(2)
-        aggregateSum2 = query.sum(1,3, 2)
+        aggregateSum2 = query.sum(1,3, 1)
         print(aggregateSum2)
-        assert(aggregateSum2 == 6)
-    """
+        assert(aggregateSum2 == 4)
 
     def test_aggregate_record_none_in_range_query(self) -> None:
         table: Table = Table('table1', 5, 0)
