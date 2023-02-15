@@ -35,7 +35,10 @@ class Query:
     """
     def insert(self, *columns):
         columnList=list(columns)
-        result = self.table.insert_record(columnList)
+        try:
+            result = self.table.insert_record(columnList)
+        except AssertionError:
+            return False
         return result
 
     
@@ -72,7 +75,7 @@ class Query:
         else:
             ridList.append(self.table.index.get_rid(search_key))
         for rid in ridList:
-            for relativeVersion in range(0, abs(relative_version)):
+            for _ in range(0, abs(relative_version)):
                 rid=self.table.get_indirection_value(rid)
             columnsList.append(self.table.get_latest_column_values(rid, projected_columns_index))
         for columns in columnsList:
@@ -88,8 +91,11 @@ class Query:
     def update(self, primary_key, *columns):
         columnList=list(columns)
         #record1 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], 0)[0]
-        result = self.table.update_record(primary_key,columnList)
-        assert(result)
+        try:
+            result = self.table.update_record(primary_key,columnList)
+        except AssertionError:
+            return False
+        #assert(result)
         #record2 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], -2)[0]
         #rid = self.table.index.get_rid(primary_key)
         #print(rid, " | " ,self.table.get_indirection_value(rid))
