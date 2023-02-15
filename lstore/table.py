@@ -105,9 +105,11 @@ class Table:
         page_range: PageRange = self.__find_page_range_with_rid(rid)
         return page_range.get_latest_column_value(rid, -1)
 
-    # def get_indirection_value(self, rid: int):
-    #     page_range: PageRange = self.__find_page_range_with_rid(rid)
-    #     return page_range.get_latest_column_value(rid,-1)
+    def get_versioned_id(self, rid: int, relative_version: int):
+        page_range: PageRange = self.__find_page_range_with_rid(rid)
+        for _ in range(0, relative_version):
+            rid = page_range.get_latest_column_value(rid,-1)
+        return rid
 
     def __merge(self):
         print("merge is happening")

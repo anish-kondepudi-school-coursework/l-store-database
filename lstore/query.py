@@ -71,11 +71,13 @@ class Query:
     def select_version(
         self, search_key, search_key_index, projected_columns_index, relative_version
     ):
+        """ note that for milestone 1, `search_key_index` is not used as we only select
+            based on primary key """
         columnsList: list = []
         recordList: list[Record] = []
         rid = self.table.index.get_rid(search_key)
-        for _ in range(0, abs(relative_version)):
-            rid = self.table.get_indirection_value(rid)
+        if relative_version != 0:
+            rid = self.table.get_versioned_rid(rid, abs(relative_version))
         columnsList.append(
             self.table.get_latest_column_values(rid, projected_columns_index)
         )
@@ -83,8 +85,7 @@ class Query:
             record = Record(rid, search_key, columns)
             recordList.append(record)
         return recordList
-        """ note that for milestone 1, `search_key_index` is not used as we only select
-            based on primary key """
+
 
     # def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
     #     columnsList: list = []
