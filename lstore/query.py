@@ -136,7 +136,7 @@ class Query:
                 column_index_list.append(1)
             else:
                 column_index_list.append(0)
-        print
+        #print
         for key in range(start_range, end_range+1):
             try:
                 record = self.select_version(key, self.table.primary_key_col, column_index_list, relative_version)

@@ -61,6 +61,24 @@ class TestQuery(unittest.TestCase):
         assert(aggregateSum1 == 6)
         aggregateSum2 = query.sum(1,3, 2)
         assert(aggregateSum2 == 9)
+        
+    """
+    def test_aggregate_record_delete_query(self) -> None:
+        table: Table = Table('table1', 5, 0)
+        query: Query = Query(table)
+        record1: list[int] = [1, 2, 3, 4, 5]
+        query.insert(*record1)
+        record2: list[int] = [2, 2, 3, 4, 5]
+        query.insert(*record2)
+        record3: list[int] = [3, 2, 3, 4, 5]
+        query.insert(*record3)
+        aggregateSum1 = query.sum(1,3, 1)
+        assert(aggregateSum1 == 6)
+        query.delete(2)
+        aggregateSum2 = query.sum(1,3, 2)
+        print(aggregateSum2)
+        assert(aggregateSum2 == 6)
+    """
 
     def test_aggregate_record_none_in_range_query(self) -> None:
         table: Table = Table('table1', 5, 0)
@@ -73,6 +91,27 @@ class TestQuery(unittest.TestCase):
         query.insert(*record3)
         aggregateSum1 = query.sum(4,5, 1)
         assert(not aggregateSum1)
+
+    def test_delete_fail_select_query(self) -> None:
+        table: Table = Table('table1', 5, 0)
+        query: Query = Query(table)
+        record1: list[int] = [1, 2, 3, 4, 5]
+        query.insert(*record1)
+        query.delete(1)
+        try:
+            query.select(1,query.table.primary_key_col, [1,1,1,1,1])
+            assert(0)
+        except:
+            assert(1)
+
+
+    def test_delete_reinsert_query(self) -> None:
+        table: Table = Table('table1', 5, 0)
+        query: Query = Query(table)
+        record1: list[int] = [1, 2, 3, 4, 5]
+        query.insert(*record1)
+        query.delete(1)
+        query.insert(*record1)
 
     def test_increment_record_query(self) -> None:
         table: Table = Table('table1', 5, 0)
