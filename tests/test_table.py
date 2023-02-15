@@ -87,6 +87,14 @@ class TestTable(unittest.TestCase):
         table.update_record(rid, new_record)
         self._test_all_get_column_possibilities(new_prim_key, table, new_record)
 
+    def test_delete_record(self) -> None:
+        table: Table = Table('table1', 2, self.primary_key_col)
+        prim_key = 1
+        table.insert_record([prim_key, 2])
+        table.delete_record(prim_key)
+        with self.assertRaises(AssertionError):
+            table.get_latest_column_values(prim_key, [1, 1])
+
     def _test_all_get_column_possibilities(self, prim_key, table, record) -> None:
         rid: int = table.index.get_rid(prim_key)
         self.assertEqual(table.get_latest_column_values(rid, [0, 0]), [])
