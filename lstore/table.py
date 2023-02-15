@@ -58,8 +58,8 @@ class Table:
         return False
 
     def update_record(self, primary_key: int, columns: list) -> bool:
-        ''' index.get_rid() will throw assertion error and stop transaction if 
-            primary key does not exist in index -- keeps operations atomic ''' 
+        ''' index.get_rid() will throw assertion error and stop transaction if
+            primary key does not exist in index -- keeps operations atomic '''
         rid: int = self.index.get_rid(primary_key)
         page_range_with_record: PageRange = self.__find_page_range_with_rid(rid)
         self.index.delete_key(primary_key)
@@ -72,7 +72,7 @@ class Table:
 
     def get_latest_column_values(self, rid: int, projected_columns_index: list):
         assert len(projected_columns_index) == self.num_columns
-        ''' index.get_rid() will throw assertion error and stop transaction if 
+        ''' index.get_rid() will throw assertion error and stop transaction if
             primary key does not exist in index -- keeps operations atomic '''
         page_range: PageRange = self.__find_page_range_with_rid(rid)
         col_vals: list[int] = []
@@ -91,7 +91,10 @@ class Table:
         page_range: PageRange = self.__find_page_range_with_rid(rid)
         return page_range.get_latest_column_value(rid,-1)
 
+    # def get_indirection_value(self, rid: int):
+    #     page_range: PageRange = self.__find_page_range_with_rid(rid)
+    #     return page_range.get_latest_column_value(rid,-1)
+
     def __merge(self):
         print("merge is happening")
         pass
- 
