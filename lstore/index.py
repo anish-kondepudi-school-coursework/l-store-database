@@ -1,13 +1,29 @@
 """
-A data strucutre holding indices for various columns of a table. Key column should be indexd by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
+A data structure holding indices for various columns of a table. Key column should be indexd by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
 """
+import lstore.table as Table
+
 
 class Index:
-
-    def __init__(self, table):
+    def __init__(self, table: Table):
         # One index for each table. All our empty initially.
-        self.indices = [None] *  table.num_columns
-        pass
+        self.indices: list = [None] * table.num_columns
+        self.key_to_rid = dict()
+
+    def add_key_rid(self, key: int, rid: int) -> None:
+        assert key not in self.key_to_rid
+        self.key_to_rid[key] = rid
+
+    def get_rid(self, key: int) -> None:
+        assert key in self.key_to_rid
+        return self.key_to_rid[key]
+
+    def key_exists(self, key: int) -> bool:
+        return key in self.key_to_rid
+
+    def delete_key(self, key: int) -> None:
+        assert key in self.key_to_rid
+        del self.key_to_rid[key]
 
     """
     # returns the location of all records with the given value on column "column"
