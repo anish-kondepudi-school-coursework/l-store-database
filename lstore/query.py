@@ -11,7 +11,7 @@ class Query:
     """
 
     def __init__(self, table: Table):
-        self.table = table
+        self.table: Table = table
         pass
 
     """
