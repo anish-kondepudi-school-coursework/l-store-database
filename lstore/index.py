@@ -5,6 +5,7 @@ import lstore.table as Table
 
 
 class Index:
+
     def __init__(self, table: Table):
         # One index for each table. All our empty initially.
         self.indices: list = [None] * table.num_columns

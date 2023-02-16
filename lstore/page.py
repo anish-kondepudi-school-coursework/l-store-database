@@ -10,6 +10,9 @@ from .rid import RID_Generator
 
 
 class LogicalPage:
+
+    __slots__ = 'num_cols', 'phys_pages', 'available_chunks', 'rid_generator'
+
     def __init__(self, num_cols: int, rid_generator: RID_Generator):
         self.num_cols = num_cols
         self.phys_pages = [PhysicalPage() for _ in range(self.num_cols)]
@@ -55,6 +58,8 @@ class TailPage(LogicalPage):
 
 class PhysicalPage:
     max_number_of_records: int = PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
+
+    __slots__ = 'data'
 
     def __init__(self):
         self.data = bytearray(PHYSICAL_PAGE_SIZE)

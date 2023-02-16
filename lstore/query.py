@@ -10,6 +10,8 @@ class Query:
     Any query that crashes (due to exceptions) should return False
     """
 
+    __slots__ = 'table'
+
     def __init__(self, table: Table):
         self.table: Table = table
         pass

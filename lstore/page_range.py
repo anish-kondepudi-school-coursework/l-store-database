@@ -14,6 +14,9 @@ from typing import Tuple
 
 
 class PageRange:
+
+    __slots__ = 'num_attr_cols', 'num_total_cols', 'base_pages', 'tail_pages', 'page_directory', 'rid_generator', 'cumulative'
+
     def __init__(
         self,
         num_cols: int,

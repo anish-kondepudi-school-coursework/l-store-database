@@ -4,6 +4,9 @@ from typing import Tuple
 
 
 class PageDirectory:
+
+    __slots__ = 'page_directory'
+
     def __init__(self) -> None:
         self.page_directory = dict()
 
