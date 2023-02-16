@@ -29,7 +29,7 @@ class Table:
     """
 
     def __init__(
-        self, name: str, num_columns: int, primary_key_col: int, cumulative=False
+        self, name: str, num_columns: int, primary_key_col: int, cumulative=True
     ):
         self.name: str = name
         self.primary_key_col: int = primary_key_col
