@@ -129,6 +129,10 @@ class PageRange:
         else:
             return self.non_cumulative_get_latest_column_value(base_rid, column_index)
 
+    def de_cumulative_get_latest_column_value(self, base_rid, column_indices):
+        page, offset, _ = self.__get_latest_record_details(base_rid)
+        return [page.get_column_of_record(column_index, offset) for column_index in column_indices]
+
     def cumulative_get_latest_column_value(self, base_rid, column_index):
         page, offset, _ = self.__get_latest_record_details(base_rid)
         return page.get_column_of_record(column_index, offset)

@@ -77,7 +77,6 @@ class Table:
         rid: int = self.index.get_rid(primary_key)
         page_range_with_record: PageRange = self.__find_page_range_with_rid(rid)
         self.index.delete_key(primary_key)
-        # print(columns)
         newPrimaryKey: int = primary_key
         if columns[self.primary_key_col] != None:
             newPrimaryKey = columns[self.primary_key_col]
@@ -90,10 +89,14 @@ class Table:
             primary key does not exist in index -- keeps operations atomic """
         page_range: PageRange = self.__find_page_range_with_rid(rid)
         col_vals: list[int] = []
-        for col_ind in range(self.num_columns):
-            if projected_columns_index[col_ind] == 1:
-                col_val: int = page_range.get_latest_column_value(rid, col_ind)
-                col_vals.append(col_val)
+        if self.cumulative:
+            indices = [i for i in range(self.num_columns) if projected_columns_index[i] == 1]
+            col_vals = page_range.de_cumulative_get_latest_column_value(rid, indices)
+        else:
+            for col_ind in range(self.num_columns):
+                if projected_columns_index[col_ind] == 1:
+                    col_val: int = page_range.get_latest_column_value(rid, col_ind)
+                    col_vals.append(col_val)
         return col_vals
 
     def __find_page_range_with_rid(self, rid: int):

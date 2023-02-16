@@ -157,13 +157,7 @@ class Query:
     ):
         aggregateSum: int = 0
         anyRecords: bool = False
-        column_index_list: list = []
-        for index in range(0, self.table.num_columns):
-            if index == aggregate_column_index:
-                column_index_list.append(1)
-            else:
-                column_index_list.append(0)
-        # print
+        column_index_list: list = [i == aggregate_column_index for i in range(0, self.table.num_columns)]
         for key in range(start_range, end_range + 1):
             try:
                 record = self.select_version(
