@@ -31,6 +31,12 @@ class TestQuery(unittest.TestCase):
         recordList = query.select(1, query.table.primary_key_col, [1, 1, 1, 1, 1])
         assert recordList[0].columns == record
 
+    def test_select_record_does_not_exist_query(self) -> None:
+        table: Table = Table("table1", 5, 0)
+        query: Query = Query(table)
+        recordList = query.select(1, query.table.primary_key_col, [1, 1, 1, 1, 1])
+        assert recordList==[]
+
     def test_update_record_query(self) -> None:
         table: Table = Table("table1", 5, 0)
         query: Query = Query(table)

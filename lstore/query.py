@@ -75,18 +75,21 @@ class Query:
     ):
         """ note that for milestone 1, `search_key_index` is not used as we only select
             based on primary key """
-        columnsList: list = []
-        recordList: list[Record] = []
-        rid = self.table.index.get_rid(search_key)
-        if relative_version != 0:
-            rid = self.table.get_versioned_rid(rid, abs(relative_version))
-        columnsList.append(
-            self.table.get_latest_column_values(rid, projected_columns_index)
-        )
-        for columns in columnsList:
-            record = Record(rid, search_key, columns)
-            recordList.append(record)
-        return recordList
+        try:
+            columnsList: list = []
+            recordList: list[Record] = []
+            rid = self.table.index.get_rid(search_key)
+            if relative_version != 0:
+                rid = self.table.get_versioned_rid(rid, abs(relative_version))
+            columnsList.append(
+                self.table.get_latest_column_values(rid, projected_columns_index)
+            )
+            for columns in columnsList:
+                record = Record(rid, search_key, columns)
+                recordList.append(record)
+            return recordList
+        except:
+            return []
 
 
     # def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
