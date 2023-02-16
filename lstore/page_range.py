@@ -25,7 +25,7 @@ class PageRange:
         cumulative: bool,
     ):
         self.num_attr_cols: int = num_cols
-        self.num_total_cols: int = num_cols + NUMBER_OF_METADATA_COLUMNS
+        self.num_total_cols: int = num_cols + NUMBER_OF_METADATA_COLUMNS - (1 if cumulative else 0)
         self.base_pages: list[BasePage] = [BasePage(self.num_total_cols, rid_generator)]
         self.tail_pages: list[TailPage] = [TailPage(self.num_total_cols, rid_generator)]
         self.page_directory: PageDirectory = page_directory
@@ -91,14 +91,15 @@ class PageRange:
         else:
             new_tail_record_columns = columns_to_update.copy()
 
-        # Construct schema encoding integer for new record
-        schema_encoding_integer = 0
-        for ind, col in enumerate(columns_to_update):
-            schema_encoding_integer |= (
-                1 << (self.num_attr_cols - ind - 1) if col != None else 0
-            )
+        if not self.cumulative:
+            # Construct schema encoding integer for new record
+            schema_encoding_integer = 0
+            for ind, col in enumerate(columns_to_update):
+                schema_encoding_integer |= (
+                    1 << (self.num_attr_cols - ind - 1) if col != None else 0
+                )
+            new_tail_record_columns.append(schema_encoding_integer)
 
-        new_tail_record_columns.append(schema_encoding_integer)
         new_tail_record_columns.append(latest_record_rid)
 
         # Find latest tail page to insert next version of record

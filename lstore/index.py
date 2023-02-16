@@ -3,7 +3,6 @@ A data structure holding indices for various columns of a table. Key column shou
 """
 import lstore.table as Table
 
-
 class Index:
 
     def __init__(self, table: Table):

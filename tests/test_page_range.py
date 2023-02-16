@@ -109,7 +109,7 @@ class TestCumulativePageRange(unittest.TestCase):
             self.num_cols, self.page_directory, self.rid_generator, True
         )
         base_rid = page_range.insert_record([1, 2, 3])
-        self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
+        self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, base_rid])
 
     def test_get_latest_column_value_after_update(self) -> None:
         page_range: PageRange = PageRange(
@@ -117,32 +117,32 @@ class TestCumulativePageRange(unittest.TestCase):
         )
         base_rid = page_range.insert_record([1, 2, 3])
         page_range.update_record(base_rid, [None, 5, None])
-        self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, 0b010, base_rid])
+        self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, base_rid])
 
     def test_update_record_for_small_number_of_updates(self) -> None:
         page_range: PageRange = PageRange(
             self.num_cols, self.page_directory, self.rid_generator, True
         )
         base_rid = page_range.insert_record([1, 2, 3])
-        self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
+        self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, base_rid])
         tail_rid1 = page_range.update_record(base_rid, [None, 5, None])
-        self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, 0b010, base_rid])
+        self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, base_rid])
         tail_rid2 = page_range.update_record(base_rid, [None, 7, 2])
         self.__verify_record_retrieval(
-            page_range, base_rid, [1, 7, 2, 0b011, tail_rid1]
+            page_range, base_rid, [1, 7, 2, tail_rid1]
         )
         tail_rid3 = page_range.update_record(base_rid, [9, None, None])
         self.__verify_record_retrieval(
-            page_range, base_rid, [9, 7, 2, 0b100, tail_rid2]
+            page_range, base_rid, [9, 7, 2, tail_rid2]
         )
         self.__verify_tail_chain(
             page_range,
             base_rid,
             [
-                (base_rid, [1, 2, 3, 0b000, tail_rid3]),
-                (tail_rid3, [9, 7, 2, 0b100, tail_rid2]),
-                (tail_rid2, [1, 7, 2, 0b011, tail_rid1]),
-                (tail_rid1, [1, 5, 3, 0b010, base_rid]),
+                (base_rid, [1, 2, 3, tail_rid3]),
+                (tail_rid3, [9, 7, 2, tail_rid2]),
+                (tail_rid2, [1, 7, 2, tail_rid1]),
+                (tail_rid1, [1, 5, 3, base_rid]),
             ],
         )
 
@@ -162,9 +162,9 @@ class TestCumulativePageRange(unittest.TestCase):
             )
             previous_tail_rid = tail_rid
 
-        expected_tail_chain = [(base_rid, [1, 2, 3, 0b000, previous_tail_rid])]
+        expected_tail_chain = [(base_rid, [1, 2, 3, previous_tail_rid])]
         for rid in range(previous_tail_rid, base_rid, -1):
-            expected_tail_chain.append((rid, ([4, 5, 6, 0b111, rid - 1])))
+            expected_tail_chain.append((rid, ([4, 5, 6, rid - 1])))
 
         self.__verify_tail_chain(page_range, base_rid, expected_tail_chain)
         self.assertEqual(
