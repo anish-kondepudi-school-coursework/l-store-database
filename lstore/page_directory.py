@@ -4,8 +4,7 @@ from typing import Tuple
 
 
 class PageDirectory:
-
-    __slots__ = 'page_directory'
+    __slots__ = "page_directory"
 
     def __init__(self) -> None:
         self.page_directory = dict()
@@ -13,9 +12,7 @@ class PageDirectory:
     def get_page(self, rid: int) -> Tuple[LogicalPage | None, int]:
         return self.page_directory.get(rid, (None, INVALID_OFFSET))
 
-    def insert_page(
-        self, rid: int, base_page: BasePage, base_record_offset: int
-    ) -> None:
+    def insert_page(self, rid: int, base_page: BasePage, base_record_offset: int) -> None:
         assert rid not in self.page_directory
         self.page_directory[rid] = base_page, base_record_offset
 

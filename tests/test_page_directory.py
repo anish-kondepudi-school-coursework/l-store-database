@@ -20,21 +20,15 @@ class TestPageDirectory(unittest.TestCase):
     def test_insert_page_when_page_not_previously_inserted(self) -> None:
         page_directory: PageDirectory = PageDirectory()
         try:
-            page_directory.insert_page(
-                self.base_rid, self.base_page, self.base_record_offset
-            )
+            page_directory.insert_page(self.base_rid, self.base_page, self.base_record_offset)
         except:
             self.fail("Exception raises on insert_page unexpectedly.")
 
     def test_insert_page_when_page_previously_inserted(self) -> None:
         page_directory: PageDirectory = PageDirectory()
-        page_directory.insert_page(
-            self.base_rid, self.base_page, self.base_record_offset
-        )
+        page_directory.insert_page(self.base_rid, self.base_page, self.base_record_offset)
         with self.assertRaises(AssertionError):
-            page_directory.insert_page(
-                self.base_rid, self.base_page, self.base_record_offset
-            )
+            page_directory.insert_page(self.base_rid, self.base_page, self.base_record_offset)
 
     def test_get_page_when_no_pages_inserted(self) -> None:
         page_directory: PageDirectory = PageDirectory()
@@ -47,9 +41,7 @@ class TestPageDirectory(unittest.TestCase):
 
     def test_get_page_when_page_inserted(self) -> None:
         page_directory: PageDirectory = PageDirectory()
-        page_directory.insert_page(
-            self.base_rid, self.base_page, self.base_record_offset
-        )
+        page_directory.insert_page(self.base_rid, self.base_page, self.base_record_offset)
         page_details: tuple[BasePage, int] = page_directory.get_page(self.base_rid)
         self.assertTupleEqual(
             tuple1=page_details,
@@ -64,9 +56,7 @@ class TestPageDirectory(unittest.TestCase):
 
     def test_delete_page_when_page_exists(self) -> None:
         page_directory: PageDirectory = PageDirectory()
-        page_directory.insert_page(
-            self.base_rid, self.base_page, self.base_record_offset
-        )
+        page_directory.insert_page(self.base_rid, self.base_page, self.base_record_offset)
         try:
             page_directory.delete_page(self.base_rid)
         except:

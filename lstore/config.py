@@ -3,9 +3,7 @@ INDIRECTION_COLUMN = -1
 INVALID_OFFSET: int = -1
 INVALID_RID: int = 0
 MAX_BASE_PAGES_IN_PAGE_RANGE = 16
-NUMBER_OF_METADATA_COLUMNS = (
-    2  # Only supporting Indirection and Schema Encoding for now
-)
+NUMBER_OF_METADATA_COLUMNS = 2  # Only supporting Indirection and Schema Encoding for now
 PHYSICAL_PAGE_SIZE: int = 4096  # 4KB pages
 RID_COLUMN = -3
 SCHEMA_ENCODING_COLUMN = -2

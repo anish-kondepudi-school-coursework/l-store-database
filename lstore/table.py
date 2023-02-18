@@ -3,6 +3,7 @@ from .config import (
     MAX_BASE_PAGES_IN_PAGE_RANGE,
     PHYSICAL_PAGE_SIZE,
     ATTRIBUTE_SIZE,
+    INDIRECTION_COLUMN
 )
 from .index import Index
 from .rid import RID_Generator
@@ -18,9 +19,7 @@ class Record:
 
 
 class Table:
-    num_records_in_page_range = (
-        MAX_BASE_PAGES_IN_PAGE_RANGE * PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
-    )
+    num_records_in_page_range = MAX_BASE_PAGES_IN_PAGE_RANGE * PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
 
     """
     :param name: string         #Table name
@@ -28,9 +27,7 @@ class Table:
     :param key: int             #Index of table key in columns
     """
 
-    def __init__(
-        self, name: str, num_columns: int, primary_key_col: int, cumulative=True
-    ):
+    def __init__(self, name: str, num_columns: int, primary_key_col: int, cumulative=True):
         self.name: str = name
         self.primary_key_col: int = primary_key_col
         self.num_columns: int = num_columns
@@ -38,11 +35,7 @@ class Table:
         self.page_directory: PageDirectory = PageDirectory()
         self.rid_generator: RID_Generator = RID_Generator()
         self.cumulative = cumulative
-        self.page_ranges: list[PageRange] = [
-            PageRange(
-                self.num_columns, self.page_directory, self.rid_generator, cumulative
-            )
-        ]
+        self.page_ranges: list[PageRange] = [PageRange(self.num_columns, self.page_directory, self.rid_generator, cumulative)]
 
     def delete_record(self, primary_key: int) -> None:
         rid: int = self.index.get_rid(primary_key)
@@ -91,7 +84,7 @@ class Table:
         col_vals: list[int] = []
         if self.cumulative:
             indices = [i for i in range(self.num_columns) if projected_columns_index[i] == 1]
-            col_vals = page_range.de_cumulative_get_latest_column_value(rid, indices)
+            col_vals = page_range.cumulative_get_multiple_latest_column_value(rid, indices)
         else:
             for col_ind in range(self.num_columns):
                 if projected_columns_index[col_ind] == 1:
@@ -106,12 +99,12 @@ class Table:
 
     def get_indirection_value(self, rid: int):
         page_range: PageRange = self.__find_page_range_with_rid(rid)
-        return page_range.get_latest_column_value(rid, -1)
+        return page_range.get_latest_column_value(rid, INDIRECTION_COLUMN)
 
     def get_versioned_rid(self, rid: int, relative_version: int):
         page_range: PageRange = self.__find_page_range_with_rid(rid)
         for _ in range(0, relative_version):
-            rid = page_range.get_latest_column_value(rid,-1)
+            rid = page_range.get_latest_column_value(rid, -1)
         return rid
 
     def __merge(self):

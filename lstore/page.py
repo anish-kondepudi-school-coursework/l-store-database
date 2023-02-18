@@ -10,15 +10,12 @@ from .rid import RID_Generator
 
 
 class LogicalPage:
-
-    __slots__ = 'num_cols', 'phys_pages', 'available_chunks', 'rid_generator'
+    __slots__ = "num_cols", "phys_pages", "available_chunks", "rid_generator"
 
     def __init__(self, num_cols: int, rid_generator: RID_Generator):
         self.num_cols = num_cols
         self.phys_pages = [PhysicalPage() for _ in range(self.num_cols)]
-        self.available_chunks = [
-            index for index in range(PhysicalPage.max_number_of_records)
-        ]
+        self.available_chunks = [index for index in range(PhysicalPage.max_number_of_records)]
         self.rid_generator = rid_generator
 
     def insert_record(self, columns: list):
@@ -43,9 +40,7 @@ class LogicalPage:
         return phys_page_of_indir.insert_value(new_value, offset)
 
     def __is_valid_column_index(self, column_index: int) -> bool:
-        return (0 <= column_index < self.num_cols) or (
-            column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN)
-        )
+        return (0 <= column_index < self.num_cols) or (column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN))
 
 
 class BasePage(LogicalPage):
@@ -59,16 +54,14 @@ class TailPage(LogicalPage):
 class PhysicalPage:
     max_number_of_records: int = PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
 
-    __slots__ = 'data'
+    __slots__ = "data"
 
     def __init__(self):
         self.data = bytearray(PHYSICAL_PAGE_SIZE)
 
     def get_column_value(self, offset: int) -> int:
         assert self.__is_offset_valid(offset)
-        column_bytes = self.data[
-            offset * ATTRIBUTE_SIZE : offset * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE
-        ]
+        column_bytes = self.data[offset * ATTRIBUTE_SIZE : offset * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE]
         column_value = int.from_bytes(column_bytes, byteorder="big", signed=True)
         return column_value
 
@@ -76,9 +69,7 @@ class PhysicalPage:
         if not self.__is_offset_valid(offset):
             return False
         value_bytes = value.to_bytes(ATTRIBUTE_SIZE, byteorder="big", signed=True)
-        self.data[
-            offset * ATTRIBUTE_SIZE : offset * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE
-        ] = value_bytes
+        self.data[offset * ATTRIBUTE_SIZE : offset * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE] = value_bytes
         return True
 
     def __is_offset_valid(self, offset: int) -> bool:

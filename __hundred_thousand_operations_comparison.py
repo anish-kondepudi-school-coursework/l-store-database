@@ -2,10 +2,11 @@ from lstore.db import Database
 from lstore.query import Query
 from time import process_time
 from random import choice, randrange
+
 print("100K")
 # Student Id and 4 grades
 db = Database()
-grades_table = db.create_table('Grades', 5, 0)
+grades_table = db.create_table("Grades", 5, 0)
 query = Query(grades_table)
 keys = []
 
@@ -35,7 +36,7 @@ print("Updating 100K records took:  \t\t\t", update_time_1 - update_time_0)
 # Measuring Select Performance
 select_time_0 = process_time()
 for i in range(0, 100000):
-    query.select(choice(keys),0 , [1, 1, 1, 1, 1])
+    query.select(choice(keys), 0, [1, 1, 1, 1, 1])
 select_time_1 = process_time()
 print("Selecting 100K records took:  \t\t\t", select_time_1 - select_time_0)
 
@@ -60,7 +61,7 @@ print("150K")
 
 # Student Id and 4 grades
 db = Database()
-grades_table = db.create_table('Grades', 5, 0)
+grades_table = db.create_table("Grades", 5, 0)
 query = Query(grades_table)
 keys = []
 
@@ -90,7 +91,7 @@ print("Updating 150K records took:  \t\t\t", update_time_1 - update_time_0)
 # Measuring Select Performance
 select_time_0 = process_time()
 for i in range(0, 150000):
-    query.select(choice(keys),0 , [1, 1, 1, 1, 1])
+    query.select(choice(keys), 0, [1, 1, 1, 1, 1])
 select_time_1 = process_time()
 print("Selecting 150K records took:  \t\t\t", select_time_1 - select_time_0)
 
@@ -115,7 +116,7 @@ print("200K")
 
 # Student Id and 4 grades
 db = Database()
-grades_table = db.create_table('Grades', 5, 0)
+grades_table = db.create_table("Grades", 5, 0)
 query = Query(grades_table)
 keys = []
 
@@ -145,7 +146,7 @@ print("Updating 200K records took:  \t\t\t", update_time_1 - update_time_0)
 # Measuring Select Performance
 select_time_0 = process_time()
 for i in range(0, 200000):
-    query.select(choice(keys),0 , [1, 1, 1, 1, 1])
+    query.select(choice(keys), 0, [1, 1, 1, 1, 1])
 select_time_1 = process_time()
 print("Selecting 200K records took:  \t\t\t", select_time_1 - select_time_0)
 

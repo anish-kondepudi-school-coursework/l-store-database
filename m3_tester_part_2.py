@@ -6,10 +6,10 @@ from lstore.transaction_worker import TransactionWorker
 from random import choice, randint, sample, seed
 
 db = Database()
-db.open('./ECS165')
+db.open("./ECS165")
 
 # Getting the existing Grades table
-grades_table = db.get_table('Grades')
+grades_table = db.get_table("Grades")
 
 # create a query class for the grades table
 query = Query(grades_table)
@@ -30,7 +30,13 @@ seed(3562901)
 for i in range(0, number_of_records):
     key = 92106429 + i
     keys.append(key)
-    records[key] = [key, randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20)]
+    records[key] = [
+        key,
+        randint(i * 20, (i + 1) * 20),
+        randint(i * 20, (i + 1) * 20),
+        randint(i * 20, (i + 1) * 20),
+        randint(i * 20, (i + 1) * 20),
+    ]
     # print(records[key])
 
 transaction_workers = []
@@ -41,9 +47,6 @@ for i in range(number_of_transactions):
 
 for i in range(num_threads):
     transaction_workers.append(TransactionWorker())
-
-
-
 
 
 # x update on every column
@@ -63,10 +66,9 @@ for j in range(number_of_operations_per_record):
 print("Update finished")
 
 
-# add trasactions to transaction workers  
+# add trasactions to transaction workers
 for i in range(number_of_transactions):
     transaction_workers[i % num_threads].add_transaction(transactions[i])
-
 
 
 # run transaction workers
@@ -83,14 +85,14 @@ for key in keys:
     try:
         correct = records[key]
         query = Query(grades_table)
-        
+
         result = query.select(key, 0, [1, 1, 1, 1, 1])[0].columns
         if correct != result:
-            print('select error on primary key', key, ':', result, ', correct:', correct)
+            print("select error on primary key", key, ":", result, ", correct:", correct)
             score -= 1
     except:
-        print('Record Not found', key)
+        print("Record Not found", key)
         score -= 1
-print('Score', score, '/', len(keys))
+print("Score", score, "/", len(keys))
 
 db.close()

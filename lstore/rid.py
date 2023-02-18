@@ -1,6 +1,5 @@
 class RID_Generator:
-
-    __slots__ = 'curr_rid'
+    __slots__ = "curr_rid"
 
     def __init__(self):
         self.curr_rid = 1

@@ -14,16 +14,9 @@ from typing import Tuple
 
 
 class PageRange:
+    __slots__ = "num_attr_cols", "num_total_cols", "base_pages", "tail_pages", "page_directory", "rid_generator", "cumulative"
 
-    __slots__ = 'num_attr_cols', 'num_total_cols', 'base_pages', 'tail_pages', 'page_directory', 'rid_generator', 'cumulative'
-
-    def __init__(
-        self,
-        num_cols: int,
-        page_directory: PageDirectory,
-        rid_generator: RID_Generator,
-        cumulative: bool,
-    ):
+    def __init__(self, num_cols: int, page_directory: PageDirectory, rid_generator: RID_Generator, cumulative: bool):
         self.num_attr_cols: int = num_cols
         self.num_total_cols: int = num_cols + NUMBER_OF_METADATA_COLUMNS - (1 if cumulative else 0)
         self.base_pages: list[BasePage] = [BasePage(self.num_total_cols, rid_generator)]
@@ -33,10 +26,7 @@ class PageRange:
         self.cumulative = cumulative
 
     def is_full(self) -> bool:
-        return (
-            len(self.base_pages) == MAX_BASE_PAGES_IN_PAGE_RANGE
-            and self.base_pages[-1].is_full()
-        )
+        return len(self.base_pages) == MAX_BASE_PAGES_IN_PAGE_RANGE and self.base_pages[-1].is_full()
 
     # note that for milestone the record will never actually be deleted, only invalidated
     # in the future record will be removed during merge cycles
@@ -61,9 +51,8 @@ class PageRange:
             self.base_pages.append(new_base_page)
             latest_base_page = new_base_page
 
-        rid, offset = latest_base_page.insert_record(
-            columns + [0, INVALID_RID]
-        )  # schema encoding and indirection set to 0
+        # schema encoding and indirection set to 0
+        rid, offset = latest_base_page.insert_record(columns + [0, INVALID_RID])
         latest_base_page.update_indir_of_record(rid, offset)
         self.page_directory.insert_page(rid, latest_base_page, offset)
         return rid
@@ -77,16 +66,11 @@ class PageRange:
             latest_page_offset,
             latest_record_rid,
         ) = self.__get_latest_record_details(base_rid)
-        latest_record_columns: list[int] = [
-            latest_page.get_column_of_record(ind, latest_page_offset)
-            for ind in range(self.num_attr_cols)
-        ]
+        latest_record_columns: list[int] = [latest_page.get_column_of_record(ind, latest_page_offset) for ind in range(self.num_attr_cols)]
 
         new_tail_record_columns = []
         if self.cumulative:
-            for ind, (old_col, new_col) in enumerate(
-                zip(latest_record_columns, columns_to_update)
-            ):
+            for ind, (old_col, new_col) in enumerate(zip(latest_record_columns, columns_to_update)):
                 new_tail_record_columns.append(old_col if new_col == None else new_col)
         else:
             new_tail_record_columns = columns_to_update.copy()
@@ -95,9 +79,7 @@ class PageRange:
             # Construct schema encoding integer for new record
             schema_encoding_integer = 0
             for ind, col in enumerate(columns_to_update):
-                schema_encoding_integer |= (
-                    1 << (self.num_attr_cols - ind - 1) if col != None else 0
-                )
+                schema_encoding_integer |= 1 << (self.num_attr_cols - ind - 1) if col != None else 0
             new_tail_record_columns.append(schema_encoding_integer)
 
         new_tail_record_columns.append(latest_record_rid)
@@ -110,12 +92,8 @@ class PageRange:
             latest_tail_page = new_tail_page
 
         # Insert new record and update page directory
-        new_tail_page_rid, new_tail_page_offset = latest_tail_page.insert_record(
-            new_tail_record_columns
-        )
-        self.page_directory.insert_page(
-            new_tail_page_rid, latest_tail_page, new_tail_page_offset
-        )
+        new_tail_page_rid, new_tail_page_offset = latest_tail_page.insert_record(new_tail_record_columns)
+        self.page_directory.insert_page(new_tail_page_rid, latest_tail_page, new_tail_page_offset)
 
         # Update indirection of base record to point to latest tail record
         base_page, base_page_offset = self.page_directory.get_page(base_rid)
@@ -129,7 +107,14 @@ class PageRange:
         else:
             return self.non_cumulative_get_latest_column_value(base_rid, column_index)
 
-    def de_cumulative_get_latest_column_value(self, base_rid, column_indices):
+    def cumulative_get_multiple_latest_column_value(self, base_rid, column_indices):
+        """
+        `base_rid`: the RID of the record that is being fetched
+        `column_indices`: binary array of attribute indices to be fetched
+        `Description` this method pulls all of the column attributes specified by `column_indices`
+        from a given page. Is preferable over `cumulative_get_latest_column_value` for when fetching
+        multiple attributes from a given record when a record is fully in cache.
+        """
         page, offset, _ = self.__get_latest_record_details(base_rid)
         return [page.get_column_of_record(column_index, offset) for column_index in column_indices]
 
@@ -149,12 +134,8 @@ class PageRange:
         column_value = page.get_column_of_record(column_index, offset)
         return column_value
 
-    def record_has_most_recent_col_value(
-        self, page: LogicalPage, offset: int, column_index: int
-    ):
-        schema_encoding_value = page.get_column_of_record(
-            SCHEMA_ENCODING_COLUMN, offset
-        )
+    def record_has_most_recent_col_value(self, page: LogicalPage, offset: int, column_index: int):
+        schema_encoding_value = page.get_column_of_record(SCHEMA_ENCODING_COLUMN, offset)
         column_index_in_schema_encoding = self.num_attr_cols - column_index - 1
         return (schema_encoding_value >> column_index_in_schema_encoding) % 2 == 0
 
@@ -163,29 +144,20 @@ class PageRange:
         tail_chain = []
         while True:
             page, offset = self.page_directory.get_page(curr_rid)
-            record = [
-                page.get_column_of_record(ind, offset)
-                for ind in range(self.num_total_cols)
-            ]
+            record = [page.get_column_of_record(ind, offset) for ind in range(self.num_total_cols)]
             tail_chain.append((curr_rid, record))
             curr_rid = page.get_column_of_record(INDIRECTION_COLUMN, offset)
             if curr_rid == base_rid:
                 break
         return tail_chain
 
-    def __get_latest_record_details(
-        self, base_rid: int
-    ) -> Tuple[LogicalPage, int, int]:
+    def __get_latest_record_details(self, base_rid: int) -> Tuple[LogicalPage, int, int]:
         base_page, base_page_offset = self.__get_base_page_of_record(base_rid)
-        base_record_indir_rid: int = base_page.get_column_of_record(
-            INDIRECTION_COLUMN, base_page_offset
-        )
+        base_record_indir_rid: int = base_page.get_column_of_record(INDIRECTION_COLUMN, base_page_offset)
         if base_rid == base_record_indir_rid:
             return base_page, base_page_offset, base_rid
 
-        tail_page, tail_page_offset = self.page_directory.get_page(
-            base_record_indir_rid
-        )
+        tail_page, tail_page_offset = self.page_directory.get_page(base_record_indir_rid)
         return tail_page, tail_page_offset, base_record_indir_rid
 
     # note, we should consider making sure that the page retrieved is a BasePage object

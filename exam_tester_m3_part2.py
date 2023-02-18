@@ -6,10 +6,10 @@ from lstore.transaction_worker import TransactionWorker
 from random import choice, randint, sample, seed
 
 db = Database()
-db.open('./ECS165')
+db.open("./ECS165")
 
 # Getting the existing Grades table
-grades_table = db.get_table('Grades')
+grades_table = db.get_table("Grades")
 
 # create a query class for the grades table
 query = Query(grades_table)
@@ -30,7 +30,13 @@ seed(3562901)
 for i in range(0, number_of_records):
     key = 92106429 + i
     keys.append(key)
-    records[key] = [key, randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20)]
+    records[key] = [
+        key,
+        randint(i * 20, (i + 1) * 20),
+        randint(i * 20, (i + 1) * 20),
+        randint(i * 20, (i + 1) * 20),
+        randint(i * 20, (i + 1) * 20),
+    ]
     print(records[key])
 
 transaction_workers = []
@@ -41,8 +47,6 @@ for i in range(number_of_transactions):
 
 for i in range(num_threads):
     transaction_workers.append(TransactionWorker())
-
-
 
 
 updated_records = {}
@@ -62,10 +66,9 @@ for j in range(number_of_operations_per_record):
 print("Update finished")
 
 
-# add trasactions to transaction workers  
+# add trasactions to transaction workers
 for i in range(number_of_transactions):
     transaction_workers[i % num_threads].add_transaction(transactions[i])
-
 
 
 # run transaction workers
@@ -81,65 +84,65 @@ score = len(keys)
 for key in keys:
     correct = records[key]
     query = Query(grades_table)
-    
+
     result = query.select_version(key, 0, [1, 1, 1, 1, 1], -1)[0].columns
     if correct != result:
-        print('select error on primary key', key, ':', result, ', correct:', correct)
+        print("select error on primary key", key, ":", result, ", correct:", correct)
         score -= 1
-print('Version -1 Score:', score, '/', len(keys))
+print("Version -1 Score:", score, "/", len(keys))
 
 v2_score = len(keys)
 for key in keys:
     correct = records[key]
     query = Query(grades_table)
-    
+
     result = query.select_version(key, 0, [1, 1, 1, 1, 1], -2)[0].columns
     if correct != result:
-        print('select error on primary key', key, ':', result, ', correct:', correct)
+        print("select error on primary key", key, ":", result, ", correct:", correct)
         v2_score -= 1
-print('Version -2 Score:', v2_score, '/', len(keys))
+print("Version -2 Score:", v2_score, "/", len(keys))
 if score != v2_score:
-    print('Failure: Version -1 and Version -2 scores must be same')
+    print("Failure: Version -1 and Version -2 scores must be same")
 
 score = len(keys)
 for key in keys:
     correct = updated_records[key]
     query = Query(grades_table)
-    
+
     result = query.select_version(key, 0, [1, 1, 1, 1, 1], 0)[0].columns
     if correct != result:
-        print('select error on primary key', key, ':', result, ', correct:', correct)
+        print("select error on primary key", key, ":", result, ", correct:", correct)
         score -= 1
-print('Version 0 Score:', score, '/', len(keys))
+print("Version 0 Score:", score, "/", len(keys))
 
 number_of_aggregates = 100
 valid_sums = 0
 for i in range(0, number_of_aggregates):
     r = sorted(sample(range(0, len(keys)), 2))
-    column_sum = sum(map(lambda x: records[x][0] if x in records else 0, keys[r[0]: r[1] + 1]))
+    column_sum = sum(map(lambda x: records[x][0] if x in records else 0, keys[r[0] : r[1] + 1]))
     result = query.sum_version(keys[r[0]], keys[r[1]], 0, -1)
     if column_sum == result:
         valid_sums += 1
-print("Aggregate version -1 finished. Valid Aggregations: ", valid_sums, '/', number_of_aggregates)
+print("Aggregate version -1 finished. Valid Aggregations: ", valid_sums, "/", number_of_aggregates)
 
 v2_valid_sums = 0
 for i in range(0, number_of_aggregates):
     r = sorted(sample(range(0, len(keys)), 2))
-    column_sum = sum(map(lambda x: records[x][0] if x in records else 0, keys[r[0]: r[1] + 1]))
+    column_sum = sum(map(lambda x: records[x][0] if x in records else 0, keys[r[0] : r[1] + 1]))
     result = query.sum_version(keys[r[0]], keys[r[1]], 0, -2)
     if column_sum == result:
         v2_valid_sums += 1
-print("Aggregate version -2 finished. Valid Aggregations: ", v2_valid_sums, '/', number_of_aggregates)
+print("Aggregate version -2 finished. Valid Aggregations: ", v2_valid_sums, "/", number_of_aggregates)
 if valid_sums != v2_valid_sums:
-    print('Failure: Version -1 and Version -2 aggregation scores must be same.')
+    print("Failure: Version -1 and Version -2 aggregation scores must be same.")
 
 valid_sums = 0
 for i in range(0, number_of_aggregates):
     r = sorted(sample(range(0, len(keys)), 2))
-    column_sum = sum(map(lambda x: updated_records[x][0] if x in updated_records else 0, keys[r[0]: r[1] + 1]))
+    column_sum = sum(map(lambda x: updated_records[x][0] if x in updated_records else 0, keys[r[0] : r[1] + 1]))
     result = query.sum_version(keys[r[0]], keys[r[1]], 0, 0)
     if column_sum == result:
         valid_sums += 1
-print("Aggregate version 0 finished. Valid Aggregations: ", valid_sums, '/', number_of_aggregates)
+print("Aggregate version 0 finished. Valid Aggregations: ", valid_sums, "/", number_of_aggregates)
 
 db.close()
