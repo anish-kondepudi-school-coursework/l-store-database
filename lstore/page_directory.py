@@ -1,4 +1,4 @@
-from .config import INVALID_OFFSET
+from .config import INVALID_SLOT_NUM
 from .page import BasePage, TailPage, LogicalPage
 from typing import Tuple
 
@@ -8,7 +8,7 @@ class PageDirectory:
         self.page_directory = dict()
 
     def get_page(self, rid: int) -> Tuple[LogicalPage | None, int]:
-        return self.page_directory.get(rid, (None, INVALID_OFFSET))
+        return self.page_directory.get(rid, (None, INVALID_SLOT_NUM))
 
     def insert_page(
         self, rid: int, base_page: BasePage, base_record_offset: int
