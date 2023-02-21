@@ -3,11 +3,11 @@ from .config import (
     ATTRIBUTE_SIZE,
     INDIRECTION_COLUMN,
     SCHEMA_ENCODING_COLUMN,
-    INVALID_OFFSET,
+    INVALID_SLOT_NUM,
     INVALID_RID,
 )
 from .rid import RID_Generator
-
+import time
 
 class LogicalPage:
     def __init__(self, num_cols: int, rid_generator: RID_Generator):
@@ -20,24 +20,24 @@ class LogicalPage:
 
     def insert_record(self, columns: list):
         if self.is_full():
-            return INVALID_RID, INVALID_OFFSET
-        offset = self.available_chunks.pop()
+            return INVALID_RID, INVALID_SLOT_NUM
+        slot_num = self.available_chunks.pop()
         for ind in range(self.num_cols):
             if columns[ind] != None:
-                self.phys_pages[ind].insert_value(columns[ind], offset)
+                self.phys_pages[ind].insert_value(columns[ind], slot_num)
         new_rid = self.rid_generator.new_rid()
-        return new_rid, offset
+        return new_rid, slot_num
 
     def is_full(self) -> bool:
         return len(self.available_chunks) == 0
 
-    def get_column_of_record(self, column_index: int, offset: int) -> int:
+    def get_column_of_record(self, column_index: int, slot_num: int) -> int:
         assert self.__is_valid_column_index(column_index)
-        return self.phys_pages[column_index].get_column_value(offset)
+        return self.phys_pages[column_index].get_column_value(slot_num)
 
-    def update_indir_of_record(self, new_value: int, offset: int) -> bool:
+    def update_indir_of_record(self, new_value: int, slot_num: int) -> bool:
         phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
-        return phys_page_of_indir.insert_value(new_value, offset)
+        return phys_page_of_indir.insert_value(new_value, slot_num)
 
     def __is_valid_column_index(self, column_index: int) -> bool:
         return (0 <= column_index < self.num_cols) or (
@@ -58,23 +58,35 @@ class PhysicalPage:
 
     def __init__(self):
         self.data = bytearray(PHYSICAL_PAGE_SIZE)
+        self.is_pinned = False
+        self.is_dirty = False
+        self.timestamp = time.time()
 
-    def get_column_value(self, offset: int) -> int:
-        assert self.__is_offset_valid(offset)
+    def pin_page(self):
+        self.is_pinned = True
+    
+    def unpin_page(self):
+        self.is_pinned = False
+
+    def get_column_value(self, slot_num: int) -> int:
+        assert self.__is_slot_num_valid(slot_num)
         column_bytes = self.data[
-            offset * ATTRIBUTE_SIZE : offset * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE
+            slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE
         ]
         column_value = int.from_bytes(column_bytes, byteorder="big", signed=True)
+        self.timestamp = time.time()
         return column_value
 
-    def insert_value(self, value: int, offset: int) -> bool:
-        if not self.__is_offset_valid(offset):
+    def insert_value(self, value: int, slot_num: int) -> bool:
+        if not self.__is_slot_num_valid(slot_num):
             return False
         value_bytes = value.to_bytes(ATTRIBUTE_SIZE, byteorder="big", signed=True)
         self.data[
-            offset * ATTRIBUTE_SIZE : offset * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE
+            slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE
         ] = value_bytes
+        self.is_dirty = True
+        self.timestamp = time.time()
         return True
 
-    def __is_offset_valid(self, offset: int) -> bool:
-        return 0 <= offset < PhysicalPage.max_number_of_records
+    def __is_slot_num_valid(self, slot_num: int) -> bool:
+        return 0 <= slot_num < PhysicalPage.max_number_of_records
