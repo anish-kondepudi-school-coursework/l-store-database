@@ -154,17 +154,21 @@ class TestCumulativePageRange(unittest.TestCase):
         )
         base_rid = page_range.insert_record([1, 2, 3])
 
+        first_tail_rid = None
         previous_tail_rid = base_rid
         for _ in range(self.max_base_page_records_per_page_range * multiplier):
             tail_rid = page_range.update_record(base_rid, [4, 5, 6])
+            if first_tail_rid is None:
+                first_tail_rid = tail_rid
             self.__verify_record_retrieval(
                 page_range, base_rid, [4, 5, 6, 0b111, previous_tail_rid]
             )
             previous_tail_rid = tail_rid
 
         expected_tail_chain = [(base_rid, [1, 2, 3, 0b000, previous_tail_rid])]
-        for rid in range(previous_tail_rid, base_rid, -1):
-            expected_tail_chain.append((rid, ([4, 5, 6, 0b111, rid - 1])))
+        for rid in range(previous_tail_rid, first_tail_rid, 1):
+            expected_tail_chain.append((rid, ([4, 5, 6, 0b111, rid + 1])))
+        expected_tail_chain.append((first_tail_rid, ([4, 5, 6, 0b111, base_rid])))
 
         self.__verify_tail_chain(page_range, base_rid, expected_tail_chain)
         self.assertEqual(
@@ -377,17 +381,21 @@ class TestNonCumulativePageRange(unittest.TestCase):
         )
         base_rid = page_range.insert_record([1, 2, 3])
 
+        first_tail_rid = None 
         previous_tail_rid = base_rid
         for _ in range(self.max_base_page_records_per_page_range * multiplier):
             tail_rid = page_range.update_record(base_rid, [4, 5, 6])
+            if first_tail_rid is None:
+                first_tail_rid = tail_rid
             self.__verify_record_retrieval(
                 page_range, base_rid, [4, 5, 6, 0b111, previous_tail_rid]
             )
             previous_tail_rid = tail_rid
 
         expected_tail_chain = [(base_rid, [1, 2, 3, 0b000, previous_tail_rid])]
-        for rid in range(previous_tail_rid, base_rid, -1):
-            expected_tail_chain.append((rid, ([4, 5, 6, 0b111, rid - 1])))
+        for rid in range(previous_tail_rid, first_tail_rid, 1):
+            expected_tail_chain.append((rid, ([4, 5, 6, 0b111, rid + 1])))
+        expected_tail_chain.append((first_tail_rid, ([4, 5, 6, 0b111, base_rid])))
 
         self.__verify_tail_chain(page_range, base_rid, expected_tail_chain)
         self.assertEqual(

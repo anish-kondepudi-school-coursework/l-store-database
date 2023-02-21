@@ -10,6 +10,8 @@ from lstore import (
     INVALID_RID,
     SCHEMA_ENCODING_COLUMN,
     RID_Generator,
+    START_BASE_RID,
+    START_TAIL_RID,
 )
 
 
@@ -69,12 +71,22 @@ class TestLogicalPage(unittest.TestCase):
     def test_insert_record(self) -> None:
         page: LogicalPage = self.init_page()
         rid, offset = page.insert_record(self.values_to_insert)
-        self.assertNotEqual(rid, INVALID_RID)
+        self.check_rid_is_valid(rid)
         self.assertNotEqual(offset, INVALID_OFFSET)
         for ind in range(self.num_cols):
             given_col = page.phys_pages[ind].get_column_value(offset)
             exp_col = self.values_to_insert[ind]
             self.assertEqual(given_col, exp_col)
+
+    def test_insert_record_valid_rids(self) -> None:
+        max_num_inserts = 100
+        page: LogicalPage = self.init_page()
+        for _ in range(max_num_inserts):
+            rid, _ = page.insert_record(self.values_to_insert)
+            self.check_rid_is_valid(rid)
+
+    def check_rid_is_valid(self, rid) -> None:
+        self.assertNotEqual(rid, INVALID_RID)
 
     def test_insert_record_into_full_page(self) -> None:
         page: LogicalPage = self.init_page()
@@ -124,11 +136,17 @@ class TestLogicalPage(unittest.TestCase):
 class TestBasePage(TestLogicalPage):
     def init_page(self) -> BasePage:
         return BasePage(self.num_cols, self.rid_generator)
+    
+    def check_rid_is_valid(self, rid) -> None:
+        self.assertGreaterEqual(rid, 1)
 
 
 class TestTailPage(TestLogicalPage):
     def init_page(self) -> TailPage:
         return TailPage(self.num_cols, self.rid_generator)
+    
+    def check_rid_is_valid(self, rid) -> None:
+        self.assertLessEqual(rid, -1)
 
 
 if __name__ == "__main__":

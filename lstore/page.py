@@ -25,7 +25,7 @@ class LogicalPage:
         for ind in range(self.num_cols):
             if columns[ind] != None:
                 self.phys_pages[ind].insert_value(columns[ind], offset)
-        new_rid = self.rid_generator.new_rid()
+        new_rid = self._generate_new_rid()
         return new_rid, offset
 
     def is_full(self) -> bool:
@@ -39,6 +39,9 @@ class LogicalPage:
         phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
         return phys_page_of_indir.insert_value(new_value, offset)
 
+    def _generate_new_rid(self):
+        pass
+
     def __is_valid_column_index(self, column_index: int) -> bool:
         return (0 <= column_index < self.num_cols) or (
             column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN)
@@ -46,12 +49,13 @@ class LogicalPage:
 
 
 class BasePage(LogicalPage):
-    pass
+    def _generate_new_rid(self) -> int:
+        return self.rid_generator.new_base_rid()
 
 
 class TailPage(LogicalPage):
-    pass
-
+    def _generate_new_rid(self) -> int:
+        return self.rid_generator.new_tail_rid()
 
 class PhysicalPage:
     max_number_of_records: int = PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
