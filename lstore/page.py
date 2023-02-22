@@ -58,15 +58,27 @@ class PhysicalPage:
 
     def __init__(self):
         self.data = bytearray(PHYSICAL_PAGE_SIZE)
-        self.is_pinned = False
-        self.is_dirty = False
-        self.timestamp = time.time()
+        self.pinned : int = 0
+        self.dirty : bool = False
+        self.timestamp : float = time.time()
 
-    def pin_page(self):
-        self.is_pinned = True
+    def is_dirty(self) -> bool:
+        return self.dirty
     
-    def unpin_page(self):
-        self.is_pinned = False
+    def set_dirty(self) -> None:
+        self.dirty = True
+
+    def get_timestamp(self) -> float:
+        return self.timestamp
+
+    def can_evict(self) -> bool:
+        return self.pinned == 0
+
+    def pin_page(self) -> None:
+        self.pinned += 1
+    
+    def unpin_page(self) -> None:
+        self.pinned -= 1
 
     def get_column_value(self, slot_num: int) -> int:
         assert self.__is_slot_num_valid(slot_num)
@@ -84,7 +96,7 @@ class PhysicalPage:
         self.data[
             slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE
         ] = value_bytes
-        self.is_dirty = True
+        self.dirty = True
         self.timestamp = time.time()
         return True
 
