@@ -7,9 +7,9 @@ from .config import (
     INVALID_RID,
 )
 from .rid import RID_Generator
+from abc import ABC, abstractmethod
 
-
-class LogicalPage:
+class LogicalPage(ABC):
     def __init__(self, num_cols: int, rid_generator: RID_Generator):
         self.num_cols = num_cols
         self.phys_pages = [PhysicalPage() for _ in range(self.num_cols)]
@@ -39,6 +39,7 @@ class LogicalPage:
         phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
         return phys_page_of_indir.insert_value(new_value, offset)
 
+    @abstractmethod
     def _generate_new_rid(self):
         pass
 

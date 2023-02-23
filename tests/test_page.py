@@ -13,6 +13,7 @@ from lstore import (
     START_BASE_RID,
     START_TAIL_RID,
 )
+from abc import ABC
 
 
 class TestPhysPage(unittest.TestCase):
@@ -51,8 +52,7 @@ class TestPhysPage(unittest.TestCase):
                 msg=f"Expected: {value_to_insert} Received: {column_value}",
             )
 
-
-class TestLogicalPage(unittest.TestCase):
+class LogicalPageTests(ABC):
     @classmethod
     def setUpClass(self):
         self.num_cols: int = 3
@@ -133,7 +133,7 @@ class TestLogicalPage(unittest.TestCase):
         self.assertEqual(given_indir_val, new_indir_val)
 
 
-class TestBasePage(TestLogicalPage):
+class TestBasePage(LogicalPageTests, unittest.TestCase):
     def init_page(self) -> BasePage:
         return BasePage(self.num_cols, self.rid_generator)
     
@@ -141,7 +141,7 @@ class TestBasePage(TestLogicalPage):
         self.assertGreaterEqual(rid, 1)
 
 
-class TestTailPage(TestLogicalPage):
+class TestTailPage(LogicalPageTests, unittest.TestCase):
     def init_page(self) -> TailPage:
         return TailPage(self.num_cols, self.rid_generator)
     
