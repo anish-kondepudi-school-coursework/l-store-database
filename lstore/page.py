@@ -56,11 +56,18 @@ class TailPage(LogicalPage):
 class PhysicalPage:
     max_number_of_records: int = PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
 
-    def __init__(self):
-        self.data = bytearray(PHYSICAL_PAGE_SIZE)
+    def __init__(self, data : bytearray | None = None):
+        if data is None:
+            self.data = bytearray(PHYSICAL_PAGE_SIZE)
+        else:
+            assert len(data) == PHYSICAL_PAGE_SIZE
+            self.data = data
         self.pinned : int = 0
         self.dirty : bool = False
         self.timestamp : float = time.time()
+
+    def get_data(self) -> bytearray:
+        return self.data
 
     def is_dirty(self) -> bool:
         return self.dirty

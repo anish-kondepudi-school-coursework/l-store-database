@@ -8,6 +8,7 @@ from .config import (
     SCHEMA_ENCODING_COLUMN,
     LOGICAL_DELETE,
 )
+from .disk import DiskInterface
 from .page import PhysicalPage, LogicalPage, BasePage, TailPage
 from .rid import RID_Generator
 from .page_range import PageRange
