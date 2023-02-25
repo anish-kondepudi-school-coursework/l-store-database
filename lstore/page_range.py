@@ -101,13 +101,14 @@ class PageRange:
 
         return new_tail_page_rid
 
-    def get_latest_column_value(self, base_rid: int, column_index: int) -> int:
+    def get_latest_column_values(self, rid: int, projected_columns_index: list) -> list[int]:
         if self.cumulative:
-            return self.cumulative_get_latest_column_value(base_rid, column_index)
+            indices = [i for i in range(len(projected_columns_index)) if projected_columns_index[i] == 1]
+            return self.cumulative_get_latest_column_values(rid, indices)
         else:
-            return self.non_cumulative_get_latest_column_value(base_rid, column_index)
+            return self.non_cumulative_get_latest_column_values(rid, projected_columns_index)        
 
-    def cumulative_get_multiple_latest_column_value(self, base_rid, column_indices):
+    def cumulative_get_latest_column_values(self, base_rid, column_indices):
         """
         `base_rid`: the RID of the record that is being fetched
         `column_indices`: binary array of attribute indices to be fetched
@@ -118,11 +119,15 @@ class PageRange:
         page, offset, _ = self.__get_latest_record_details(base_rid)
         return [page.get_column_of_record(column_index, offset) for column_index in column_indices]
 
-    def cumulative_get_latest_column_value(self, base_rid, column_index):
-        page, offset, _ = self.__get_latest_record_details(base_rid)
-        return page.get_column_of_record(column_index, offset)
+    def non_cumulative_get_latest_column_values(self, rid: int, projected_columns_index: list) -> list[int]:
+        col_vals: list[int] = []
+        for col_ind in range(len(projected_columns_index)):
+            if projected_columns_index[col_ind] == 1:
+                col_val: int = self.non_cumulative_get_single_column(rid, col_ind)
+                col_vals.append(col_val)
+        return col_vals
 
-    def non_cumulative_get_latest_column_value(self, base_rid, column_index):
+    def non_cumulative_get_single_column(self, base_rid, column_index):
         page, offset = self.__get_base_page_of_record(base_rid)
         while self.record_has_most_recent_col_value(page, offset, column_index):
             next_page_rid = page.get_column_of_record(INDIRECTION_COLUMN, offset)

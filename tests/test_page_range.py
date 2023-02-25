@@ -86,12 +86,12 @@ class TestCumulativePageRange(unittest.TestCase):
             msg=f"Expected invalid RID but received valid RID. Expected: {INVALID_RID} Received: {rid}",
         )
 
-    def test_get_latest_column_value_after_insert(self) -> None:
+    def test_get_latest_column_values_after_insert(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, True)
         base_rid = page_range.insert_record([1, 2, 3])
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, base_rid])
 
-    def test_get_latest_column_value_after_update(self) -> None:
+    def test_get_latest_column_values_after_update(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, True)
         base_rid = page_range.insert_record([1, 2, 3])
         page_range.update_record(base_rid, [None, 5, None])
@@ -178,8 +178,9 @@ class TestCumulativePageRange(unittest.TestCase):
             )
 
     def __verify_record_retrieval(self, page_range: PageRange, rid: int, expected_record: list) -> None:
+        actual_col_vals = page_range.get_latest_column_values(rid, [1 for _ in range(self.num_cols)])
         for ind in range(self.num_cols):
-            actual_col_val: int = page_range.get_latest_column_value(rid, ind)
+            actual_col_val: int = actual_col_vals[ind]
             expected_col_val: int = expected_record[ind]
             self.assertEqual(
                 first=actual_col_val,
@@ -261,18 +262,18 @@ class TestNonCumulativePageRange(unittest.TestCase):
             msg=f"Expected invalid RID but received valid RID. Expected: {INVALID_RID} Received: {rid}",
         )
 
-    def test_get_latest_column_value_after_insert(self) -> None:
+    def test_get_latest_column_values_after_insert(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, False)
         base_rid = page_range.insert_record([1, 2, 3])
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
 
-    def test_get_latest_column_value_after_update(self) -> None:
+    def test_get_latest_column_values_after_update(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, False)
         base_rid = page_range.insert_record([1, 2, 3])
         page_range.update_record(base_rid, [None, 5, None])
         self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, 0b010, base_rid])
 
-    def test_get_latest_column_value_after_multiple_updates(self) -> None:
+    def test_get_latest_column_values_after_multiple_updates(self) -> None:
         page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, False)
         base_rid = page_range.insert_record([1, 2, 3])
         page_range.update_record(base_rid, [None, 5, None])
@@ -361,14 +362,16 @@ class TestNonCumulativePageRange(unittest.TestCase):
             )
 
     def __verify_record_retrieval(self, page_range: PageRange, rid: int, expected_record: list) -> None:
+        actual_col_vals = page_range.get_latest_column_values(rid, [1 for _ in range(self.num_cols)])
         for ind in range(self.num_cols):
-            actual_col_val: int = page_range.get_latest_column_value(rid, ind)
+            actual_col_val: int = actual_col_vals[ind]
             expected_col_val: int = expected_record[ind]
             self.assertEqual(
                 first=actual_col_val,
                 second=expected_col_val,
                 msg=f"Expected {expected_col_val} Received: {actual_col_val}",
             )
+
 
 
 if __name__ == "__main__":

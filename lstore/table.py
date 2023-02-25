@@ -81,16 +81,17 @@ class Table:
         """ index.get_rid() will throw assertion error and stop transaction if
             primary key does not exist in index -- keeps operations atomic """
         page_range: PageRange = self.__find_page_range_with_rid(rid)
-        col_vals: list[int] = []
-        if self.cumulative:
-            indices = [i for i in range(self.num_columns) if projected_columns_index[i] == 1]
-            col_vals = page_range.cumulative_get_multiple_latest_column_value(rid, indices)
-        else:
-            for col_ind in range(self.num_columns):
-                if projected_columns_index[col_ind] == 1:
-                    col_val: int = page_range.get_latest_column_value(rid, col_ind)
-                    col_vals.append(col_val)
-        return col_vals
+        return page_range.get_latest_column_values(rid, projected_columns_index)
+        # col_vals: list[int] = []
+        # if self.cumulative:
+        #     indices = [i for i in range(self.num_columns) if projected_columns_index[i] == 1]
+        #     col_vals = page_range.cumulative_get_multiple_latest_column_value(rid, indices)
+        # else:
+        #     for col_ind in range(self.num_columns):
+        #         if projected_columns_index[col_ind] == 1:
+        #             col_val: int = page_range.get_latest_column_value(rid, col_ind)
+        #             col_vals.append(col_val)
+        # return col_vals
 
     def __find_page_range_with_rid(self, rid: int):
         page_range_index: int = rid // self.num_records_in_page_range
