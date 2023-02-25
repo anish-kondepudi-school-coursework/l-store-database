@@ -8,6 +8,7 @@ from .config import (
 )
 from .rid import RID_Generator
 from abc import ABC, abstractmethod
+import time
 
 class LogicalPage(ABC):
     def __init__(self, num_cols: int, rid_generator: RID_Generator):
@@ -25,7 +26,7 @@ class LogicalPage(ABC):
         for ind in range(self.num_cols):
             if columns[ind] != None:
                 self.phys_pages[ind].insert_value(columns[ind], slot_num)
-        new_rid = self.rid_generator.new_rid()
+        new_rid = self._generate_new_rid()
         return new_rid, slot_num
 
     def is_full(self) -> bool:
