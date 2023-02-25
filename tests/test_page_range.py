@@ -41,15 +41,15 @@ class TestCumulativePageRange(unittest.TestCase):
         record_update2 = [5, None, None]
         tail_rid2 = page_range.update_record(base_rid, record_update2)
         page_range.invalidate_record(base_rid)
-        base_record, offset = page_dir.get_page(base_rid)
-        base_indir_value = base_record.get_column_of_record(INDIRECTION_COLUMN, offset)
-        tail_record1, offset_tail1 = page_dir.get_page(base_rid)
+        base_record, slot_num = page_dir.get_page(base_rid)
+        base_indir_value = base_record.get_column_of_record(INDIRECTION_COLUMN, slot_num)
+        tail_record1, slot_num_tail1 = page_dir.get_page(base_rid)
         tail1_indir_value = tail_record1.get_column_of_record(
-            INDIRECTION_COLUMN, offset_tail1
+            INDIRECTION_COLUMN, slot_num_tail1
         )
-        tail_record2, offset_tail2 = page_dir.get_page(base_rid)
+        tail_record2, slot_num_tail2 = page_dir.get_page(base_rid)
         tail2_indir_value = tail_record2.get_column_of_record(
-            INDIRECTION_COLUMN, offset_tail2
+            INDIRECTION_COLUMN, slot_num_tail2
         )
         self.assertEqual(base_indir_value, LOGICAL_DELETE)
         self.assertEqual(tail1_indir_value, LOGICAL_DELETE)
@@ -267,15 +267,15 @@ class TestNonCumulativePageRange(unittest.TestCase):
         record_update2 = [5, None, None]
         tail_rid2 = page_range.update_record(base_rid, record_update2)
         page_range.invalidate_record(base_rid)
-        base_record, offset = page_dir.get_page(base_rid)
-        base_indir_value = base_record.get_column_of_record(INDIRECTION_COLUMN, offset)
-        tail_record1, offset_tail1 = page_dir.get_page(base_rid)
+        base_record, slot_num = page_dir.get_page(base_rid)
+        base_indir_value = base_record.get_column_of_record(INDIRECTION_COLUMN, slot_num)
+        tail_record1, slot_num_tail1 = page_dir.get_page(base_rid)
         tail1_indir_value = tail_record1.get_column_of_record(
-            INDIRECTION_COLUMN, offset_tail1
+            INDIRECTION_COLUMN, slot_num_tail1
         )
-        tail_record2, offset_tail2 = page_dir.get_page(base_rid)
+        tail_record2, slot_num_tail2 = page_dir.get_page(base_rid)
         tail2_indir_value = tail_record2.get_column_of_record(
-            INDIRECTION_COLUMN, offset_tail2
+            INDIRECTION_COLUMN, slot_num_tail2
         )
         self.assertEqual(base_indir_value, LOGICAL_DELETE)
         self.assertEqual(tail1_indir_value, LOGICAL_DELETE)

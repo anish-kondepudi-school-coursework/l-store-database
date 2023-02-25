@@ -6,7 +6,7 @@ from lstore import (
     TailPage,
     ATTRIBUTE_SIZE,
     INDIRECTION_COLUMN,
-    INVALID_OFFSET,
+    INVALID_SLOT_NUM,
     INVALID_RID,
     SCHEMA_ENCODING_COLUMN,
     RID_Generator,
@@ -19,16 +19,26 @@ from abc import ABC
 class TestPhysPage(unittest.TestCase):
     def test_insert_value_for_valid_offsets(self) -> None:
         page: PhysicalPage = PhysicalPage()
+        orig_time_stamp = page.get_timestamp()
         for offset in range(PhysicalPage.max_number_of_records):
-            self.assertTrue(page.insert_value(123, offset))
+            success = page.insert_value(123, offset)
+            self.assertTrue(success)
+            self.assertTrue(page.is_dirty())
+            self.assertGreater(page.timestamp, orig_time_stamp)
 
-    def test_insert_value_for_invalid_offsets(self) -> None:
+    def test_insert_value_for_INVALID_SLOT_NUMs(self) -> None:
         page: PhysicalPage = PhysicalPage()
-        self.assertFalse(page.insert_value(123, PhysicalPage.max_number_of_records))
-        self.assertFalse(page.insert_value(123, -1))
+        orig_time_stamp = page.get_timestamp()
+        
+        for INVALID_SLOT_NUM in [-1, PhysicalPage.max_number_of_records]:
+            success = page.insert_value(123, INVALID_SLOT_NUM)
+            self.assertFalse(success)
+            self.assertFalse(page.is_dirty())
+            self.assertEqual(orig_time_stamp, page.timestamp)
 
     def test_insert_value_for_invalid_integers(self) -> None:
         page: PhysicalPage = PhysicalPage()
+        orig_time_stamp = page.get_timestamp()
 
         offset: int = ATTRIBUTE_SIZE
         values_to_insert: list[int] = [-1 * 2**63 - 1, 2**63]
@@ -36,9 +46,12 @@ class TestPhysPage(unittest.TestCase):
         for value_to_insert in values_to_insert:
             with self.assertRaises(OverflowError):
                 page.insert_value(value_to_insert, offset)
-
+            self.assertFalse(page.is_dirty())
+            self.assertEqual(orig_time_stamp, page.get_timestamp())
+        
     def test_get_column_value_for_valid_integers(self) -> None:
         page: PhysicalPage = PhysicalPage()
+        orig_time_stamp = page.timestamp
 
         offset: int = ATTRIBUTE_SIZE
         values_to_insert: list[int] = [-1 * 2**63, -10, 0, 10, 2**63 - 1]
@@ -51,6 +64,15 @@ class TestPhysPage(unittest.TestCase):
                 second=value_to_insert,
                 msg=f"Expected: {value_to_insert} Received: {column_value}",
             )
+            self.assertGreater(page.get_timestamp(), orig_time_stamp)
+
+    def test_pin_unpin(self) -> None:
+        page: PhysicalPage = PhysicalPage()
+        self.assertTrue(page.can_evict())
+        page.pin_page()
+        self.assertFalse(page.can_evict())
+        page.unpin_page()
+        self.assertTrue(page.can_evict())
 
 class LogicalPageTests(ABC):
     @classmethod
@@ -71,8 +93,8 @@ class LogicalPageTests(ABC):
     def test_insert_record(self) -> None:
         page: LogicalPage = self.init_page()
         rid, offset = page.insert_record(self.values_to_insert)
-        self.check_rid_is_valid(rid)
-        self.assertNotEqual(offset, INVALID_OFFSET)
+        self.assertNotEqual(rid, INVALID_RID)
+        self.assertNotEqual(offset, INVALID_SLOT_NUM)
         for ind in range(self.num_cols):
             given_col = page.phys_pages[ind].get_column_value(offset)
             exp_col = self.values_to_insert[ind]
@@ -94,7 +116,7 @@ class LogicalPageTests(ABC):
             page.insert_record(self.values_to_insert)
         rid, offset = page.insert_record(self.values_to_insert)
         self.assertEqual(rid, INVALID_RID)
-        self.assertEqual(offset, INVALID_OFFSET)
+        self.assertEqual(offset, INVALID_SLOT_NUM)
 
     def test_is_full(self) -> None:
         page: LogicalPage = self.init_page()
