@@ -22,15 +22,15 @@ class Table:
         MAX_BASE_PAGES_IN_PAGE_RANGE * PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
     )
 
-    """
-    :param name: string         #Table name
-    :param num_columns: int     #Number of Columns: all columns are integer
-    :param key: int             #Index of table key in columns
-    """
 
     def __init__(
         self, name: str, num_columns: int, primary_key_col: int, cumulative=True
     ):
+        """
+        `name`: string         #Table name
+        `num_columns`: int     #Number of Columns: all columns are integer
+        `key`: int             #Index of table key in columns
+        """
         self.name: str = name
         self.primary_key_col: int = primary_key_col
         self.num_columns: int = num_columns

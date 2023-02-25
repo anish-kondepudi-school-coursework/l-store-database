@@ -25,30 +25,26 @@ class Index:
         assert key in self.key_to_rid
         del self.key_to_rid[key]
 
-    """
-    # returns the location of all records with the given value on column "column"
-    """
-
     def locate(self, column, value):
+        """
+        # returns the location of all records with the given value on column "column"
+        """
         pass
-
-    """
-    # Returns the RIDs of all records with values in column "column" between "begin" and "end"
-    """
 
     def locate_range(self, begin, end, column):
+        """
+        # Returns the RIDs of all records with values in column "column" between "begin" and "end"
+        """
         pass
-
-    """
-    # optional: Create index on specific column
-    """
 
     def create_index(self, column_number):
+        """
+        # optional: Create index on specific column
+        """
         pass
 
-    """
-    # optional: Drop index of specific column
-    """
-
     def drop_index(self, column_number):
+        """
+        # optional: Drop index of specific column
+        """
         pass
