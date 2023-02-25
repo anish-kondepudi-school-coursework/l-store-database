@@ -7,9 +7,10 @@ from .config import (
     INVALID_RID,
 )
 from .rid import RID_Generator
+from abc import ABC, abstractmethod
 import time
 
-class LogicalPage:
+class LogicalPage(ABC):
     def __init__(self, num_cols: int, rid_generator: RID_Generator):
         self.num_cols = num_cols
         self.phys_pages = [PhysicalPage() for _ in range(self.num_cols)]
@@ -25,7 +26,7 @@ class LogicalPage:
         for ind in range(self.num_cols):
             if columns[ind] != None:
                 self.phys_pages[ind].insert_value(columns[ind], slot_num)
-        new_rid = self.rid_generator.new_rid()
+        new_rid = self._generate_new_rid()
         return new_rid, slot_num
 
     def is_full(self) -> bool:
@@ -39,6 +40,10 @@ class LogicalPage:
         phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
         return phys_page_of_indir.insert_value(new_value, slot_num)
 
+    @abstractmethod
+    def _generate_new_rid(self):
+        pass
+
     def __is_valid_column_index(self, column_index: int) -> bool:
         return (0 <= column_index < self.num_cols) or (
             column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN)
@@ -46,12 +51,13 @@ class LogicalPage:
 
 
 class BasePage(LogicalPage):
-    pass
+    def _generate_new_rid(self) -> int:
+        return self.rid_generator.new_base_rid()
 
 
 class TailPage(LogicalPage):
-    pass
-
+    def _generate_new_rid(self) -> int:
+        return self.rid_generator.new_tail_rid()
 
 class PhysicalPage:
     max_number_of_records: int = PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE

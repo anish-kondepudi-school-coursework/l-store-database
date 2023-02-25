@@ -7,6 +7,8 @@ from .config import (
     MAX_BASE_PAGES_IN_PAGE_RANGE,
     SCHEMA_ENCODING_COLUMN,
     LOGICAL_DELETE,
+    START_BASE_RID,
+    START_TAIL_RID,
 )
 from .disk import DiskInterface
 from .page import PhysicalPage, LogicalPage, BasePage, TailPage
