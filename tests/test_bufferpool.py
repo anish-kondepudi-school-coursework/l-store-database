@@ -1,15 +1,10 @@
 import unittest
-from unittest.mock import MagicMock, mock_open
-from unittest.mock import patch
-from io import BytesIO
+from unittest import mock
 from lstore import (
     PhysicalPage,
     DiskInterface,
     Bufferpool,
 )
-import unittest
-from unittest import mock
-from lstore import PageRange, Table
 
 class TestBufferpool(unittest.TestCase):
     @classmethod
