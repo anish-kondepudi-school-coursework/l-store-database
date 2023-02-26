@@ -122,6 +122,24 @@ class TestBufferpool(unittest.TestCase):
         bufferpool.evict_all_pages()
         disk_interface.write_page.assert_called_with(self.page_id, physical_page)
 
+    def test_evict_page(self) -> None:
+        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
+        disk_interface: mock.MagicMock = mock.Mock()
+        bufferpool.disk: DiskInterface = disk_interface
+
+        self.assertTrue(bufferpool.insert_page("page_id_1", self.slot_num, 111))
+        physical_page1: PhysicalPage = bufferpool.get_page("page_id_1")
+
+        self.assertTrue(bufferpool.insert_page("page_id_2", self.slot_num, 222))
+        physical_page2: PhysicalPage = bufferpool.get_page("page_id_2")
+
+        bufferpool._evict_page()
+        disk_interface.write_page.assert_called_with("page_id_1", physical_page1)
+
+        physical_pages: dict[str,PhysicalPage] = bufferpool.physical_pages
+        self.assertEqual(len(physical_pages), 1)
+        self.__verify_physical_page_equality(physical_pages["page_id_2"], physical_page2)
+
     def __verify_physical_page_equality(self, physical_page1: PhysicalPage, physical_page2: PhysicalPage) -> None:
         self.assertEqual(physical_page1.get_data(), physical_page2.get_data())
         self.assertEqual(physical_page1.is_dirty(), physical_page2.is_dirty())

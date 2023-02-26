@@ -45,14 +45,14 @@ class Bufferpool:
 
     def evict_all_pages(self) -> None:
         for _ in range(len(self.physical_pages)):
-            self.__evict_page()
+            self._evict_page()
 
     def __evict_page_if_bufferpool_full(self) -> None:
         num_free_pages: int = self.max_buffer_pool_size - len(self.physical_pages)
         if num_free_pages == 0:
-            self.__evict_page()
+            self._evict_page()
 
-    def __evict_page(self) -> None:
+    def _evict_page(self) -> None:
         if len(self.physical_pages) == 0:
             return
 
