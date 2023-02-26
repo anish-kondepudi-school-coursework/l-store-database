@@ -12,15 +12,17 @@ class TestBufferpool(unittest.TestCase):
         self.max_bufferpool_pages: int = 2
         self.slot_num: int = PhysicalPage.max_number_of_records // 2
         self.page_id = "page_id_1"
+        self.path = "test_path"
 
     @classmethod
     def tearDownClass(self):
         self.max_bufferpool_pages = None
         self.slot_num = None
         self.page_id = None
+        self.path = None
 
     def test_insert_page_when_bufferpool_empty(self) -> None:
-        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages)
+        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
 
@@ -36,7 +38,7 @@ class TestBufferpool(unittest.TestCase):
         self.assertEqual(physical_page.can_evict(), True)
 
     def test_insert_page_when_inserting_duplicate_page_in_memory(self) -> None:
-        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages)
+        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
 
@@ -44,8 +46,7 @@ class TestBufferpool(unittest.TestCase):
         self.assertFalse(bufferpool.insert_page(self.page_id, self.slot_num, 832))
 
     def test_insert_page_when_bufferpool_full(self) -> None:
-
-        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages)
+        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
 
@@ -72,7 +73,7 @@ class TestBufferpool(unittest.TestCase):
         self.__verify_physical_page_equality(physical_pages["page_id_3"], physical_page3)
 
     def test_get_page_when_page_in_bufferpool(self) -> None:
-        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages)
+        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
 
@@ -86,7 +87,7 @@ class TestBufferpool(unittest.TestCase):
 
 
     def test_get_page_when_page_not_in_bufferpool(self) -> None:
-        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages)
+        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
 
@@ -102,7 +103,7 @@ class TestBufferpool(unittest.TestCase):
         self.assertEqual(physical_page_in_memory.data, physical_page_from_disk.data)
 
     def test_get_page_when_page_does_not_exist(self) -> None:
-        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages)
+        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
 
@@ -112,7 +113,7 @@ class TestBufferpool(unittest.TestCase):
         self.assertEqual(page, None)
 
     def test_evict_all_pages(self) -> None:
-        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages)
+        bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
 

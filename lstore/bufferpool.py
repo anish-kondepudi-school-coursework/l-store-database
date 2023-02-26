@@ -3,10 +3,10 @@ from .disk import DiskInterface
 
 class Bufferpool:
 
-    def __init__(self, max_buffer_pool_size: int) -> None:
+    def __init__(self, max_buffer_pool_size: int, path: str) -> None:
         self.max_buffer_pool_size: int = max_buffer_pool_size
         self.physical_pages: dict[str,PhysicalPage] = dict()
-        self.disk = DiskInterface("/Users/anish/Desktop/l-store-database/tmp") # ToDo - change to correct path
+        self.disk = DiskInterface(path)
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
         if page_id in self.physical_pages:
