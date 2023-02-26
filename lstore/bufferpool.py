@@ -6,21 +6,27 @@ class Bufferpool:
     def __init__(self, max_buffer_pool_size: int) -> None:
         self.max_buffer_pool_size: int = max_buffer_pool_size
         self.physical_pages: dict[str,PhysicalPage] = dict()
-        self.disk = DiskInterface("test") # ToDo: change from "test" to real name
+        self.disk = DiskInterface("/Users/anish/Desktop/l-store-database/tmp") # ToDo - change to correct path
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
         if page_id in self.physical_pages:
             return False
 
-        num_free_pages: int = self.max_buffer_pool_size - len(self.physical_pages)
-        if num_free_pages == 0:
-            self.__evict_page()
+        # Can we expose a new endpoint in DiskInterface for "file_exists", so we
+        # don't have to assert on exceptions to check if a page exists on disk
+
+        # try:
+        #     self.disk.get_page(page_id)
+        #     return False
+        # except FileNotFoundError:
+        #     pass
+
+        self.__evict_page_if_bufferpool_full()
 
         physical_page: PhysicalPage = PhysicalPage()
         physical_page.insert_value(value, slot_num)
         physical_page.set_dirty()
 
-        assert page_id not in self.physical_pages
         self.physical_pages[page_id] = physical_page
         return True
 
@@ -28,16 +34,22 @@ class Bufferpool:
         if page_id in self.physical_pages:
             return self.physical_pages[page_id]
 
-        num_free_pages: int = self.max_buffer_pool_size - len(self.physical_pages)
-        if num_free_pages == 0:
-            self.__evict_page()
+        self.__evict_page_if_bufferpool_full()
 
-        physical_page: PhysicalPage = self.disk.get_page(page_id)
-        self.physical_pages[page_id] = physical_page
-        return physical_page
+        try:
+            physical_page: PhysicalPage = self.disk.get_page(page_id)
+            self.physical_pages[page_id] = physical_page
+            return physical_page
+        except FileNotFoundError:
+            return None
 
     def evict_all_pages(self) -> None:
         for _ in range(len(self.physical_pages)):
+            self.__evict_page()
+
+    def __evict_page_if_bufferpool_full(self) -> None:
+        num_free_pages: int = self.max_buffer_pool_size - len(self.physical_pages)
+        if num_free_pages == 0:
             self.__evict_page()
 
     def __evict_page(self) -> None:
