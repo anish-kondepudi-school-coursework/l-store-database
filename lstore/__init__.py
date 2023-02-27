@@ -9,9 +9,10 @@ from .config import (
     LOGICAL_DELETE,
     START_BASE_RID,
     START_TAIL_RID,
+    NUM_METADATA_COLS,
 )
 from .disk import DiskInterface
-from .page import LogicalPage, BasePage, TailPage
+from .page import LogicalPage, BasePage, TailPage, get_copy_of_base_page
 from .phys_page import PhysicalPage
 from .rid import RID_Generator
 from .page_range import PageRange

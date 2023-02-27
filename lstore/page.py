@@ -1,30 +1,28 @@
 from .config import (
-    PHYSICAL_PAGE_SIZE,
-    ATTRIBUTE_SIZE,
     INDIRECTION_COLUMN,
     SCHEMA_ENCODING_COLUMN,
     INVALID_SLOT_NUM,
     INVALID_RID,
+    NUM_METADATA_COLS,
 )
 import time
+from copy import deepcopy
 from .rid import RID_Generator
-from abc import ABC, abstractmethod
+from abc import ABC
 from .bufferpool import Bufferpool
 from .phys_page import PhysicalPage
-import random 
 
 class LogicalPage(ABC):
     def __init__(self, table_name: str, num_cols: int, bufferpool: Bufferpool) -> None:
         self.starting_rid = self.rids[0]
         self.num_cols = num_cols
-        self.id = random.randint(0, 100000000)
         self.table_name = table_name
-        self.page_ids = [f"{table_name}_{self.starting_rid}_{col}_{self.id}" for col in range(num_cols)]
+        self.page_ids = [self.get_page_id_of_col(col) for col in range(num_cols)]
         self.available_chunks = [
             index for index in range(PhysicalPage.max_number_of_records)
         ]
         self.bufferpool = bufferpool
-    
+
     def insert_record(self, columns: list):
         if self.is_full():
             return INVALID_RID, INVALID_SLOT_NUM  
@@ -38,7 +36,6 @@ class LogicalPage(ABC):
     def get_column_of_record(self, column_index: int, slot_num: int) -> int:
         assert self.__is_valid_column_index(column_index)
         page_id = self.page_ids[column_index]
-        #print("Getting page id: ", page_id)
         phys_page = self.bufferpool.get_page(page_id)
         return phys_page.get_column_value(slot_num)
 
@@ -55,17 +52,26 @@ class LogicalPage(ABC):
             column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN)
         )
     
-    ''' Functions needed by merge '''
     def get_starting_rid(self) -> int:
         return self.starting_rid
 
-from copy import deepcopy
-NUM_METADATA_COLS = 2
 class BasePage(LogicalPage):
     def __init__(self, table_name: str, num_cols: int, bufferpool: Bufferpool, rid_generator: RID_Generator):
         self.rids = rid_generator.get_base_rids()
+        self.merge_iteration = 0
         super().__init__(table_name, num_cols, bufferpool)
+
+    def copy_table_data_cols(self):
+        self.merge_iteration += 1
+        for col in range(self.num_cols-NUM_METADATA_COLS):
+            old_page_id = self.page_ids[col]
+            new_page_id = self.get_page_id_of_col(col)
+            self.bufferpool.copy_page(old_page_id, new_page_id)
+            self.page_ids[col] = new_page_id
     
+    def get_page_id_of_col(self, col):
+        return f"{self.table_name}_{self.starting_rid}_{col}_{self.merge_iteration}"
+
     ''' Must only be called by merge '''
     def update_record(self, columns: list, slot_num: int) -> None:
         for ind in range(self.num_cols):
@@ -79,13 +85,13 @@ class BasePage(LogicalPage):
 def get_copy_of_base_page(base_page: BasePage) -> BasePage:
     copy_base_page = deepcopy(base_page)
     copy_base_page.bufferpool = base_page.bufferpool
-    copy_base_page.id = random.randint(0, 100000000)
-    copy_base_page.page_ids[:-NUM_METADATA_COLS] = [f"{base_page.table_name}_{base_page.starting_rid}_{col}_{copy_base_page.id}" for col in range(base_page.num_cols-NUM_METADATA_COLS)]
-    for ind in range(0, base_page.num_cols - NUM_METADATA_COLS):
-        base_page.bufferpool.copy_page(base_page.page_ids[ind], copy_base_page.page_ids[ind])
+    copy_base_page.copy_table_data_cols()
     return copy_base_page
 
 class TailPage(LogicalPage):
     def __init__(self, table_name: str, num_cols: int, bufferpool: Bufferpool, rid_generator: RID_Generator):
         self.rids = rid_generator.get_tail_rids()
         super().__init__(table_name, num_cols, bufferpool)
+    
+    def get_page_id_of_col(self, col):
+        return f"{self.table_name}_{self.starting_rid}_{col}"
