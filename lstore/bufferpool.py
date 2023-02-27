@@ -10,7 +10,7 @@ class Bufferpool:
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
         if (page_id in self.physical_pages or
-            not self.disk.page_exists(page_id)):
+            self.disk.page_exists(page_id)):
             return False
 
         self.__evict_page_if_bufferpool_full()

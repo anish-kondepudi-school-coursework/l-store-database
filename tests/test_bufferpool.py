@@ -25,6 +25,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
         self.assertTrue(bufferpool.insert_page(self.page_id, self.slot_num, 832))
         self.assertEqual(len(bufferpool.physical_pages), 1)
@@ -41,6 +42,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
         self.assertTrue(bufferpool.insert_page(self.page_id, self.slot_num, 832))
         self.assertFalse(bufferpool.insert_page(self.page_id, self.slot_num, 832))
@@ -49,13 +51,14 @@ class TestBufferpool(unittest.TestCase):
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
         self.assertTrue(bufferpool.insert_page(self.page_id, self.slot_num, 832))
         physical_page: PhysicalPage = bufferpool.get_page(self.page_id)
         bufferpool._evict_page()
         disk_interface.write_page.assert_called_with(self.page_id, physical_page)
 
-        disk_interface.page_exists.return_value = False
+        disk_interface.page_exists.return_value = True
         self.assertFalse(bufferpool.insert_page(self.page_id, self.slot_num, 832))
         disk_interface.page_exists.assert_called_with(self.page_id)
 
@@ -63,6 +66,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
         self.assertTrue(bufferpool.insert_page("page_id_1", self.slot_num, 111))
         physical_page1: PhysicalPage = bufferpool.get_page("page_id_1")
@@ -90,6 +94,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
         self.assertTrue(bufferpool.insert_page(self.page_id, self.slot_num, 832))
         self.assertEqual(len(bufferpool.physical_pages), 1)
@@ -103,6 +108,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
         self.assertTrue(bufferpool.insert_page("page_id_1", self.slot_num, 111))
         physical_page_in_memory: PhysicalPage = bufferpool.get_page("page_id_1")
@@ -110,8 +116,10 @@ class TestBufferpool(unittest.TestCase):
         self.assertTrue(bufferpool.insert_page("page_id_2", self.slot_num, 222))
         self.assertTrue(bufferpool.insert_page("page_id_3", self.slot_num, 333))
 
+        disk_interface.page_exists.return_value = True
         disk_interface.get_page.return_value = physical_page_in_memory
         physical_page_from_disk: PhysicalPage = bufferpool.get_page("page_id_1")
+        disk_interface.page_exists.assert_called_with("page_id_1")
 
         self.assertEqual(physical_page_in_memory.data, physical_page_from_disk.data)
 
@@ -119,6 +127,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
         disk_interface.page_exists.return_value = False
         page: PhysicalPage = bufferpool.get_page("non_existent_page_id")
@@ -129,6 +138,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
         self.assertTrue(bufferpool.insert_page(self.page_id, self.slot_num, 832))
         physical_page: PhysicalPage = bufferpool.get_page(self.page_id)
@@ -139,6 +149,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
         self.assertTrue(bufferpool.insert_page("page_id_1", self.slot_num, 111))
         physical_page1: PhysicalPage = bufferpool.get_page("page_id_1")
