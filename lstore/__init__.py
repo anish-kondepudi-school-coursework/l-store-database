@@ -11,7 +11,8 @@ from .config import (
     START_TAIL_RID,
 )
 from .disk import DiskInterface
-from .page import PhysicalPage, LogicalPage, BasePage, TailPage
+from .page import LogicalPage, BasePage, TailPage
+from .phys_page import PhysicalPage
 from .rid import RID_Generator
 from .page_range import PageRange
 from .page_directory import PageDirectory

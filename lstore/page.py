@@ -7,107 +7,119 @@ from .config import (
     INVALID_RID,
 )
 import time
-
-class PhysicalPage:
-    max_number_of_records: int = PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
-
-    def __init__(self, data : bytearray | None = None):
-        if data is None:
-            self.data = bytearray(PHYSICAL_PAGE_SIZE)
-        else:
-            assert len(data) == PHYSICAL_PAGE_SIZE
-            self.data = data
-        self.pinned : int = 0
-        self.dirty : bool = False
-        self.timestamp : float = time.time()
-
-    def get_data(self) -> bytearray:
-        return self.data
-
-    def is_dirty(self) -> bool:
-        return self.dirty
-    
-    def set_dirty(self) -> None:
-        self.dirty = True
-
-    def get_timestamp(self) -> float:
-        return self.timestamp
-
-    def can_evict(self) -> bool:
-        return self.pinned == 0
-
-    def pin_page(self) -> None:
-        self.pinned += 1
-    
-    def unpin_page(self) -> None:
-        self.pinned -= 1
-
-    def get_column_value(self, slot_num: int) -> int:
-        assert self.__is_slot_num_valid(slot_num)
-        column_bytes = self.data[
-            slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE
-        ]
-        column_value = int.from_bytes(column_bytes, byteorder="big", signed=True)
-        self.timestamp = time.time()
-        return column_value
-
-    def insert_value(self, value: int, slot_num: int) -> bool:
-        if not self.__is_slot_num_valid(slot_num):
-            return False
-        value_bytes = value.to_bytes(ATTRIBUTE_SIZE, byteorder="big", signed=True)
-        self.data[
-            slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE
-        ] = value_bytes
-        self.dirty = True
-        self.timestamp = time.time()
-        return True
-
-    def __is_slot_num_valid(self, slot_num: int) -> bool:
-        return 0 <= slot_num < PhysicalPage.max_number_of_records
-
 from .rid import RID_Generator
 from abc import ABC, abstractmethod
+from .bufferpool import Bufferpool
+from .phys_page import PhysicalPage
+import random 
 
 class LogicalPage(ABC):
-    def __init__(self, num_cols: int):
+    def __init__(self, table_name: str, num_cols: int, bufferpool: Bufferpool) -> None:
+        self.starting_rid = self.rids[0]
         self.num_cols = num_cols
-        self.phys_pages = [PhysicalPage() for _ in range(self.num_cols)]
+        self.id = random.randint(0, 100000000)
+        self.table_name = table_name
+        self.page_ids = [f"{table_name}_{self.starting_rid}_{col}_{self.id}" for col in range(num_cols)]
         self.available_chunks = [
             index for index in range(PhysicalPage.max_number_of_records)
         ]
-
+        self.bufferpool = bufferpool
+    
     def insert_record(self, columns: list):
         if self.is_full():
-            return INVALID_RID, INVALID_SLOT_NUM
-        slot_num = self.available_chunks.pop()
+            return INVALID_RID, INVALID_SLOT_NUM  
+        slot_num = self.available_chunks.pop() 
         for ind in range(self.num_cols):
             if columns[ind] != None:
-                self.phys_pages[ind].insert_value(columns[ind], slot_num)
+                self.bufferpool.insert_page(self.page_ids[ind], slot_num, columns[ind])
         new_rid = self.rids.pop()
         return new_rid, slot_num
 
-    def is_full(self) -> bool:
-        return len(self.available_chunks) == 0
-
     def get_column_of_record(self, column_index: int, slot_num: int) -> int:
         assert self.__is_valid_column_index(column_index)
-        return self.phys_pages[column_index].get_column_value(slot_num)
+        page_id = self.page_ids[column_index]
+        print("Getting page id: ", page_id)
+        phys_page = self.bufferpool.get_page(page_id)
+        return phys_page.get_column_value(slot_num)
 
     def update_indir_of_record(self, new_value: int, slot_num: int) -> bool:
-        phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
-        return phys_page_of_indir.insert_value(new_value, slot_num)
+        page_id = self.page_ids[INDIRECTION_COLUMN]
+        phys_page = self.bufferpool.get_page(page_id)
+        return phys_page.insert_value(new_value, slot_num)
+
+    def is_full(self) -> bool:
+        return len(self.available_chunks) == 0
 
     def __is_valid_column_index(self, column_index: int) -> bool:
         return (0 <= column_index < self.num_cols) or (
             column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN)
         )
+    
+    ''' Functions needed by merge '''
+    ''' Must only be called by merge '''
+    def update_columns(self, columns: list, slot_num: int) -> None:
+        for ind in range(self.num_cols):
+            phys_page = self.bufferpool.get_page(self.page_ids[ind])
+            success = phys_page.insert_value(columns[ind], slot_num)
+            if not success:
+                # todo: make atomic by reverting all previous inserts?
+                return False 
+        return True
 
+    def get_starting_rid(self) -> int:
+        return self.starting_rid
+
+# class LogicalPage(ABC):
+#     def __init__(self, num_cols: int):
+#         self.num_cols = num_cols
+#         self.phys_pages = [PhysicalPage() for _ in range(self.num_cols)]
+#         self.available_chunks = [
+#             index for index in range(PhysicalPage.max_number_of_records)
+#         ]
+
+#     def insert_record(self, columns: list):
+#         if self.is_full():
+#             return INVALID_RID, INVALID_SLOT_NUM
+#         slot_num = self.available_chunks.pop()
+#         for ind in range(self.num_cols):
+#             if columns[ind] != None:
+#                 self.phys_pages[ind].insert_value(columns[ind], slot_num)
+#         new_rid = self.rids.pop()
+#         return new_rid, slot_num
+
+#     def is_full(self) -> bool:
+#         return len(self.available_chunks) == 0
+
+#     def get_column_of_record(self, column_index: int, slot_num: int) -> int:
+#         assert self.__is_valid_column_index(column_index)
+#         return self.phys_pages[column_index].get_column_value(slot_num)
+
+#     def update_indir_of_record(self, new_value: int, slot_num: int) -> bool:
+#         phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
+#         return phys_page_of_indir.insert_value(new_value, slot_num)
+
+#     def __is_valid_column_index(self, column_index: int) -> bool:
+#         return (0 <= column_index < self.num_cols) or (
+#             column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN)
+#         )
+
+from copy import deepcopy
+NUM_METADATA_COLS = 2
 class BasePage(LogicalPage):
-    def __init__(self, num_cols: int, rid_generator: RID_Generator):
+    def __init__(self, table_name: str, num_cols: int, bufferpool: Bufferpool, rid_generator: RID_Generator):
         self.rids = rid_generator.get_base_rids()
-        super().__init__(num_cols)
+        super().__init__(table_name, num_cols, bufferpool)
+
+def get_copy_of_base_page(base_page: BasePage) -> BasePage:
+    copy_base_page = deepcopy(base_page)
+    copy_base_page.bufferpool = base_page.bufferpool
+    copy_base_page.id = random.randint(0, 100000000)
+    copy_base_page.page_ids[:-NUM_METADATA_COLS] = [f"{base_page.table_name}_{base_page.starting_rid}_{col}_{copy_base_page.id}" for col in range(base_page.num_cols-NUM_METADATA_COLS)]
+    for ind in range(0, base_page.num_cols - NUM_METADATA_COLS):
+        base_page.bufferpool.copy_page(base_page.page_ids[ind], copy_base_page.page_ids[ind])
+    return copy_base_page
 
 class TailPage(LogicalPage):
-    def __init__(self, num_cols: int, rid_generator: RID_Generator):
+    def __init__(self, table_name: str, num_cols: int, bufferpool: Bufferpool, rid_generator: RID_Generator):
         self.rids = rid_generator.get_tail_rids()
-        super().__init__(num_cols)
+        super().__init__(table_name, num_cols, bufferpool)

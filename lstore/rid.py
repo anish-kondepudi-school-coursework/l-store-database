@@ -1,5 +1,5 @@
 from .config import START_BASE_RID, START_TAIL_RID
-from .page import PhysicalPage
+from .phys_page import PhysicalPage
 class RID_Generator:
     def __init__(self):
         self.curr_base_rid = START_BASE_RID

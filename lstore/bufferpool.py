@@ -1,4 +1,4 @@
-from .page import PhysicalPage
+from .phys_page import PhysicalPage
 from .disk import DiskInterface
 
 class Bufferpool:
@@ -6,20 +6,12 @@ class Bufferpool:
     def __init__(self, max_buffer_pool_size: int, path: str) -> None:
         self.max_buffer_pool_size: int = max_buffer_pool_size
         self.physical_pages: dict[str,PhysicalPage] = dict()
-        self.disk = DiskInterface(path)
+        self.disk: DiskInterface = DiskInterface(path)
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
-        if page_id in self.physical_pages:
+        if (page_id in self.physical_pages or
+            self.disk.page_exists(page_id)):
             return False
-
-        # Can we expose a new endpoint in DiskInterface for "file_exists", so we
-        # don't have to assert on exceptions to check if a page exists on disk
-
-        # try:
-        #     self.disk.get_page(page_id)
-        #     return False
-        # except FileNotFoundError:
-        #     pass
 
         self.__evict_page_if_bufferpool_full()
 
@@ -30,18 +22,26 @@ class Bufferpool:
         self.physical_pages[page_id] = physical_page
         return True
 
+    def copy_page(self, source_page_id: str, dest_page_id: str) -> bool:
+        if (dest_page_id in self.physical_pages or
+            self.disk.page_exists(dest_page_id)):
+            return False
+        source_page = self.get_page(source_page_id)
+        self.disk.write_page(dest_page_id, source_page)
+        return True
+
     def get_page(self, page_id: str) -> PhysicalPage:
         if page_id in self.physical_pages:
             return self.physical_pages[page_id]
 
+        if not self.disk.page_exists(page_id):
+            return None
+
         self.__evict_page_if_bufferpool_full()
 
-        try:
-            physical_page: PhysicalPage = self.disk.get_page(page_id)
-            self.physical_pages[page_id] = physical_page
-            return physical_page
-        except FileNotFoundError:
-            return None
+        physical_page: PhysicalPage = self.disk.get_page(page_id)
+        self.physical_pages[page_id] = physical_page
+        return physical_page
 
     def evict_all_pages(self) -> None:
         for _ in range(len(self.physical_pages)):

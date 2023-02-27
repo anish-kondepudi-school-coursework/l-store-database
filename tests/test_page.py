@@ -1,5 +1,6 @@
 import unittest
 from lstore import (
+    Bufferpool,
     PhysicalPage,
     LogicalPage,
     BasePage,
@@ -74,13 +75,107 @@ class TestPhysPage(unittest.TestCase):
         page.unpin_page()
         self.assertTrue(page.can_evict())
 
+# class LogicalPageTests(ABC):
+#     @classmethod
+#     def setUpClass(self):
+#         self.bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
+#         disk_interface: mock.MagicMock = mock.Mock()
+#         self.bufferpool.disk: DiskInterface = disk_interface
+#         disk_interface.page_exists.return_value = False
+#         self.num_cols: int = 3
+#         self.values_to_insert: list[int] = [0, 4, 10]
+#         self.rid_generator = RID_Generator()
+
+#     @classmethod
+#     def tearDownClass(self):
+#         self.num_cols: int = None
+#         self.values_to_insert: list[int] = None
+#         self.rid_generator = None
+
+#     def init_page(self) -> LogicalPage:
+#         return LogicalPage(self.num_cols, self.rid_generator)
+
+#     def test_insert_record(self) -> None:
+#         page: LogicalPage = self.init_page()
+#         rid, offset = page.insert_record(self.values_to_insert)
+#         self.assertNotEqual(rid, INVALID_RID)
+#         self.assertNotEqual(offset, INVALID_SLOT_NUM)
+#         for ind in range(self.num_cols):
+#             given_col = page.phys_pages[ind].get_column_value(offset)
+#             exp_col = self.values_to_insert[ind]
+#             self.assertEqual(given_col, exp_col)
+
+#     def test_insert_record_valid_rids(self) -> None:
+#         max_num_inserts = 100
+#         page: LogicalPage = self.init_page()
+#         for _ in range(max_num_inserts):
+#             rid, _ = page.insert_record(self.values_to_insert)
+#             self.check_rid_is_valid(rid)
+
+#     def check_rid_is_valid(self, rid) -> None:
+#         self.assertNotEqual(rid, INVALID_RID)
+
+#     def test_insert_record_into_full_page(self) -> None:
+#         page: LogicalPage = self.init_page()
+#         for _ in range(PhysicalPage.max_number_of_records):
+#             page.insert_record(self.values_to_insert)
+#         rid, offset = page.insert_record(self.values_to_insert)
+#         self.assertEqual(rid, INVALID_RID)
+#         self.assertEqual(offset, INVALID_SLOT_NUM)
+
+#     def test_is_full(self) -> None:
+#         page: LogicalPage = self.init_page()
+#         for _ in range(PhysicalPage.max_number_of_records):
+#             self.assertFalse(page.is_full())
+#             page.insert_record(self.values_to_insert)
+#         self.assertTrue(page.is_full())
+
+#     def test_get_column(self):
+#         page: LogicalPage = self.init_page()
+#         _, offset = page.insert_record(self.values_to_insert)
+#         for ind in range(self.num_cols):
+#             given_col = page.get_column_of_record(ind, offset)
+#             exp_col = self.values_to_insert[ind]
+#             self.assertEqual(given_col, exp_col)
+#         for ind in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN):
+#             given_col = page.get_column_of_record(ind, offset)
+#             exp_col = self.values_to_insert[ind]
+#             self.assertEqual(given_col, exp_col)
+
+#     def test_get_column_invalid_index(self):
+#         page: LogicalPage = self.init_page()
+#         _, offset = page.insert_record(self.values_to_insert)
+#         with self.assertRaises(AssertionError):
+#             page.get_column_of_record(self.num_cols + 1, offset)
+#         with self.assertRaises(AssertionError):
+#             page.get_column_of_record(-3, offset)
+
+#     def test_update_indir(self) -> None:
+#         page: LogicalPage = self.init_page()
+#         _, offset = page.insert_record(self.values_to_insert)
+#         new_indir_val = 5
+#         res = page.update_indir_of_record(new_indir_val, offset)
+#         self.assertTrue(res)
+#         given_indir_val = page.phys_pages[INDIRECTION_COLUMN].get_column_value(offset)
+#         self.assertEqual(given_indir_val, new_indir_val)
+
+from unittest import mock
+from lstore.disk import DiskInterface
+
+
 class LogicalPageTests(ABC):
     @classmethod
     def setUpClass(self):
         self.num_cols: int = 3
         self.values_to_insert: list[int] = [0, 4, 10]
         self.rid_generator = RID_Generator()
-
+        self.max_bufferpool_pages: int = self.num_cols + 1
+        self.path = ""
+        self.bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
+        disk_interface: mock.MagicMock = mock.Mock()
+        self.bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
+        
     @classmethod
     def tearDownClass(self):
         self.num_cols: int = None
@@ -96,68 +191,15 @@ class LogicalPageTests(ABC):
         self.assertNotEqual(rid, INVALID_RID)
         self.assertNotEqual(offset, INVALID_SLOT_NUM)
         for ind in range(self.num_cols):
-            given_col = page.phys_pages[ind].get_column_value(offset)
+            given_col = page.bufferpool.get_page(page.page_ids[ind]).get_column_value(offset)
+            #given_col = page.phys_pages[ind].get_column_value(offset)
             exp_col = self.values_to_insert[ind]
             self.assertEqual(given_col, exp_col)
-
-    def test_insert_record_valid_rids(self) -> None:
-        max_num_inserts = 100
-        page: LogicalPage = self.init_page()
-        for _ in range(max_num_inserts):
-            rid, _ = page.insert_record(self.values_to_insert)
-            self.check_rid_is_valid(rid)
-
-    def check_rid_is_valid(self, rid) -> None:
-        self.assertNotEqual(rid, INVALID_RID)
-
-    def test_insert_record_into_full_page(self) -> None:
-        page: LogicalPage = self.init_page()
-        for _ in range(PhysicalPage.max_number_of_records):
-            page.insert_record(self.values_to_insert)
-        rid, offset = page.insert_record(self.values_to_insert)
-        self.assertEqual(rid, INVALID_RID)
-        self.assertEqual(offset, INVALID_SLOT_NUM)
-
-    def test_is_full(self) -> None:
-        page: LogicalPage = self.init_page()
-        for _ in range(PhysicalPage.max_number_of_records):
-            self.assertFalse(page.is_full())
-            page.insert_record(self.values_to_insert)
-        self.assertTrue(page.is_full())
-
-    def test_get_column(self):
-        page: LogicalPage = self.init_page()
-        _, offset = page.insert_record(self.values_to_insert)
-        for ind in range(self.num_cols):
-            given_col = page.get_column_of_record(ind, offset)
-            exp_col = self.values_to_insert[ind]
-            self.assertEqual(given_col, exp_col)
-        for ind in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN):
-            given_col = page.get_column_of_record(ind, offset)
-            exp_col = self.values_to_insert[ind]
-            self.assertEqual(given_col, exp_col)
-
-    def test_get_column_invalid_index(self):
-        page: LogicalPage = self.init_page()
-        _, offset = page.insert_record(self.values_to_insert)
-        with self.assertRaises(AssertionError):
-            page.get_column_of_record(self.num_cols + 1, offset)
-        with self.assertRaises(AssertionError):
-            page.get_column_of_record(-3, offset)
-
-    def test_update_indir(self) -> None:
-        page: LogicalPage = self.init_page()
-        _, offset = page.insert_record(self.values_to_insert)
-        new_indir_val = 5
-        res = page.update_indir_of_record(new_indir_val, offset)
-        self.assertTrue(res)
-        given_indir_val = page.phys_pages[INDIRECTION_COLUMN].get_column_value(offset)
-        self.assertEqual(given_indir_val, new_indir_val)
 
 
 class TestBasePage(LogicalPageTests, unittest.TestCase):
     def init_page(self) -> BasePage:
-        return BasePage(self.num_cols, self.rid_generator)
+        return BasePage("", self.num_cols, self.bufferpool, self.rid_generator)
     
     def check_rid_is_valid(self, rid) -> None:
         self.assertGreaterEqual(rid, 1)
@@ -165,11 +207,72 @@ class TestBasePage(LogicalPageTests, unittest.TestCase):
 
 class TestTailPage(LogicalPageTests, unittest.TestCase):
     def init_page(self) -> TailPage:
-        return TailPage(self.num_cols, self.rid_generator)
+        return TailPage("", self.num_cols, self.bufferpool, self.rid_generator)
     
     def check_rid_is_valid(self, rid) -> None:
         self.assertLessEqual(rid, -1)
 
-
 if __name__ == "__main__":
     unittest.main()
+    # buff = Bufferpool(16, "")
+    # bp = BasePage("asf", 5, buff, RID_Generator())
+    # bp.insert_record([1, 2, 3, 0, 0])
+    # buff.evict_all_pages()
+    # print("Col: ", bp.get_column_of_record(0, 511))
+    # print("Col: ", bp.get_column_of_record(1, 511))
+    # print("Col: ", bp.get_column_of_record(2, 511))
+    # print("Col: ", bp.get_column_of_record(3, 511))
+    # print("Col: ", bp.get_column_of_record(4, 511))
+
+    # bp.update_indir_of_record(12, 511)
+    # buff.evict_all_pages()
+    # print("Col: ", bp.get_column_of_record(0, 511))
+    # print("Col: ", bp.get_column_of_record(1, 511))
+    # print("Col: ", bp.get_column_of_record(2, 511))
+    # print("Col: ", bp.get_column_of_record(3, 511))
+    # print("Col: ", bp.get_column_of_record(4, 511))
+
+    # buff.evict_all_pages()
+    # bp.update_columns([5, 6, 3, 5, 4], 511)
+    # buff.evict_all_pages()
+    # print("Col: ", bp.get_column_of_record(0, 511))
+    # print("Col: ", bp.get_column_of_record(1, 511))
+    # print("Col: ", bp.get_column_of_record(2, 511))
+    # print("Col: ", bp.get_column_of_record(3, 511))
+    # print("Col: ", bp.get_column_of_record(4, 511))
+
+    # from lstore.page import get_copy_of_base_page
+    # bp2 = get_copy_of_base_page(bp)
+    # bp2.id = 123
+    # print(bp2.id, bp.id)
+    # print(bp2.page_ids, bp.page_ids)
+    # print("Col: ", bp2.get_column_of_record(0, 511))
+    # print("Col: ", bp2.get_column_of_record(1, 511))
+    # print("Col: ", bp2.get_column_of_record(2, 511))
+    # print("Col: ", bp2.get_column_of_record(3, 511))
+    # print("Col: ", bp2.get_column_of_record(4, 511))
+
+    # bp2.update_columns([1, 2, 2, 3, 4], 511)
+    # print("Col: ", bp2.get_column_of_record(0, 511))
+    # print("Col: ", bp2.get_column_of_record(1, 511))
+    # print("Col: ", bp2.get_column_of_record(2, 511))
+    # print("Col: ", bp2.get_column_of_record(3, 511))
+    # print("Col: ", bp2.get_column_of_record(4, 511))
+
+    # #buff.evict_all_pages()
+    # print("Previous:")
+    # print("Col: ", bp.get_column_of_record(0, 511))
+    # print("Col: ", bp.get_column_of_record(1, 511))
+    # print("Col: ", bp.get_column_of_record(2, 511))
+    # print("Col: ", bp.get_column_of_record(3, 511))
+    # print("Col: ", bp.get_column_of_record(4, 511))
+
+    '''
+        for tests of get copy:
+            make sure that if the copied base page updates the indirection, then the original base page
+            can see that update, but that if the copied base page updates a data column in the table,
+            the original base page DOESN't see that change 
+    '''
+
+    #print(buff.get_page("asf_1_0").get_column_value(0))
+    #unittest.main()

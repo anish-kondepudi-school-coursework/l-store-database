@@ -1,4 +1,4 @@
-from .page import PhysicalPage
+from .phys_page import PhysicalPage
 import os
 
 class DiskInterface:
