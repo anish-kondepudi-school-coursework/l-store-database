@@ -18,3 +18,4 @@ from .page_directory import PageDirectory
 from .table import Table
 from .index import Index
 from .query import Query
+from .bufferpool import Bufferpool

@@ -18,6 +18,12 @@ class TestDiskInterface(unittest.TestCase):
     def tearDownClass(self):
         self.path_of_file = None
         self.file_name = None
+    
+    @patch("os.path.isfile")
+    def test_page_exists(self, isfile) -> None:
+        disk_interface = DiskInterface(self.path_of_file)
+        val = disk_interface.page_exists(self.file_name)
+        isfile.assert_called_once_with(f"{self.path_of_file}/{self.file_name}")
 
     @patch("builtins.open")
     def test_write_page(self, mock_open) -> None:

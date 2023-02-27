@@ -1,4 +1,5 @@
 from .page import PhysicalPage
+import os
 
 class DiskInterface:
     def __init__(self, path: str) -> None:
@@ -6,6 +7,10 @@ class DiskInterface:
             self.path : str = path[:-1]
         else:
             self.path : str = path
+
+    def page_exists(self, page_id) -> bool:
+        file_name : str = self.__make_file_name(page_id)
+        return os.path.isfile(file_name)
 
     def get_page(self, page_id : str) -> PhysicalPage:
         file_name : str = self.__make_file_name(page_id)
