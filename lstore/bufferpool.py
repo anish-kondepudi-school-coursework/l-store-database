@@ -1,5 +1,6 @@
 from .phys_page import PhysicalPage
 from .disk import DiskInterface
+from copy import deepcopy
 
 class Bufferpool:
 
@@ -25,9 +26,13 @@ class Bufferpool:
     def copy_page(self, source_page_id: str, dest_page_id: str) -> bool:
         if (dest_page_id in self.physical_pages or
             self.disk.page_exists(dest_page_id)):
-            return False
+            return False        
+        self.__evict_page_if_bufferpool_full()
         source_page = self.get_page(source_page_id)
-        self.disk.write_page(dest_page_id, source_page)
+        source_page_copy = deepcopy(source_page)
+        self.__evict_page_if_bufferpool_full()
+        source_page_copy.set_dirty()
+        self.physical_pages[dest_page_id] = source_page_copy
         return True
 
     def get_page(self, page_id: str) -> PhysicalPage:

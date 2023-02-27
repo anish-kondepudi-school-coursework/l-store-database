@@ -38,7 +38,7 @@ class LogicalPage(ABC):
     def get_column_of_record(self, column_index: int, slot_num: int) -> int:
         assert self.__is_valid_column_index(column_index)
         page_id = self.page_ids[column_index]
-        print("Getting page id: ", page_id)
+        #print("Getting page id: ", page_id)
         phys_page = self.bufferpool.get_page(page_id)
         return phys_page.get_column_value(slot_num)
 
@@ -56,52 +56,8 @@ class LogicalPage(ABC):
         )
     
     ''' Functions needed by merge '''
-    ''' Must only be called by merge '''
-    def update_columns(self, columns: list, slot_num: int) -> None:
-        for ind in range(self.num_cols):
-            phys_page = self.bufferpool.get_page(self.page_ids[ind])
-            success = phys_page.insert_value(columns[ind], slot_num)
-            if not success:
-                # todo: make atomic by reverting all previous inserts?
-                return False 
-        return True
-
     def get_starting_rid(self) -> int:
         return self.starting_rid
-
-# class LogicalPage(ABC):
-#     def __init__(self, num_cols: int):
-#         self.num_cols = num_cols
-#         self.phys_pages = [PhysicalPage() for _ in range(self.num_cols)]
-#         self.available_chunks = [
-#             index for index in range(PhysicalPage.max_number_of_records)
-#         ]
-
-#     def insert_record(self, columns: list):
-#         if self.is_full():
-#             return INVALID_RID, INVALID_SLOT_NUM
-#         slot_num = self.available_chunks.pop()
-#         for ind in range(self.num_cols):
-#             if columns[ind] != None:
-#                 self.phys_pages[ind].insert_value(columns[ind], slot_num)
-#         new_rid = self.rids.pop()
-#         return new_rid, slot_num
-
-#     def is_full(self) -> bool:
-#         return len(self.available_chunks) == 0
-
-#     def get_column_of_record(self, column_index: int, slot_num: int) -> int:
-#         assert self.__is_valid_column_index(column_index)
-#         return self.phys_pages[column_index].get_column_value(slot_num)
-
-#     def update_indir_of_record(self, new_value: int, slot_num: int) -> bool:
-#         phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
-#         return phys_page_of_indir.insert_value(new_value, slot_num)
-
-#     def __is_valid_column_index(self, column_index: int) -> bool:
-#         return (0 <= column_index < self.num_cols) or (
-#             column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN)
-#         )
 
 from copy import deepcopy
 NUM_METADATA_COLS = 2
@@ -109,6 +65,16 @@ class BasePage(LogicalPage):
     def __init__(self, table_name: str, num_cols: int, bufferpool: Bufferpool, rid_generator: RID_Generator):
         self.rids = rid_generator.get_base_rids()
         super().__init__(table_name, num_cols, bufferpool)
+    
+    ''' Must only be called by merge '''
+    def update_record(self, columns: list, slot_num: int) -> None:
+        for ind in range(self.num_cols):
+            phys_page = self.bufferpool.get_page(self.page_ids[ind])
+            success = phys_page.insert_value(columns[ind], slot_num)
+            if not success:
+                # todo: make atomic by reverting all previous inserts?
+                return False 
+        return True
 
 def get_copy_of_base_page(base_page: BasePage) -> BasePage:
     copy_base_page = deepcopy(base_page)
