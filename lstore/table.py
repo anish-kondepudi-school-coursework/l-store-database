@@ -41,7 +41,7 @@ class Table:
         self.cumulative = cumulative
         self.page_ranges: list[PageRange] = [
             PageRange(
-                self.num_columns, self.page_directory, self.rid_generator, cumulative
+                self.num_columns, self.page_directory, self.rid_generator, self.name, self.bufferpool, cumulative
             )
         ]
 
@@ -61,6 +61,8 @@ class Table:
                 self.num_columns,
                 self.page_directory,
                 self.rid_generator,
+                self.name,
+                self.bufferpool,
                 self.cumulative,
             )
             rid_from_insertion: int = new_page_range.insert_record(columns)
@@ -78,7 +80,6 @@ class Table:
         rid: int = self.index.get_rid(primary_key)
         page_range_with_record: PageRange = self.__find_page_range_with_rid(rid)
         self.index.delete_key(primary_key)
-        # print(columns)
         newPrimaryKey: int = primary_key
         if columns[self.primary_key_col] != None:
             newPrimaryKey = columns[self.primary_key_col]

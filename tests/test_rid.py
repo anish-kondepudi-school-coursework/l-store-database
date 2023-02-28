@@ -5,9 +5,9 @@ class TestRidGenerator(unittest.TestCase):
     def test_get_base_rids(self) -> None:
         PhysicalPage.max_number_of_records = 5
         rid_generator = RID_Generator()
-        self.assertListEqual(rid_generator.get_base_rids(), [1, 2, 3, 4, 5])
-        self.assertListEqual(rid_generator.get_base_rids(), [6, 7, 8, 9, 10])
-        self.assertListEqual(rid_generator.get_base_rids(), [11, 12, 13, 14, 15])
+        self.assertListEqual(rid_generator.get_base_rids(), [5, 4, 3, 2, 1])
+        self.assertListEqual(rid_generator.get_base_rids(), [10, 9, 8, 7, 6])
+        self.assertListEqual(rid_generator.get_base_rids(), [15, 14, 13, 12, 11])
 
     def test_get_tail_rids(self) -> None:
         PhysicalPage.max_number_of_records = 5

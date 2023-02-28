@@ -1,5 +1,6 @@
 import unittest
-from lstore import BasePage, RID_Generator, PageDirectory, INVALID_RID, INVALID_SLOT_NUM
+from unittest import mock
+from lstore import BasePage, Bufferpool, DiskInterface, RID_Generator, PageDirectory, INVALID_RID, INVALID_SLOT_NUM
 
 
 class TestPageDirectory(unittest.TestCase):
@@ -7,7 +8,10 @@ class TestPageDirectory(unittest.TestCase):
     def setUpClass(self):
         self.rid_generator = RID_Generator()
         self.base_rid: int = 24
-        self.base_page: BasePage = BasePage(5, self.rid_generator)
+        bufferpool = Bufferpool(1000, "")
+        bufferpool.disk: DiskInterface = mock.Mock()
+        bufferpool.disk.page_exists.return_value = False
+        self.base_page: BasePage = BasePage("", 5, bufferpool, self.rid_generator)
         self.base_record_slot_num: int = 16
 
     @classmethod

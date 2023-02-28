@@ -17,7 +17,7 @@ class RID_Generator:
         rid_high = self.curr_base_rid + PhysicalPage.max_number_of_records
         page_rid_space = [rid for rid in range(self.curr_base_rid, rid_high)]
         self.curr_base_rid = rid_high
-        return page_rid_space
+        return page_rid_space[::-1]
     
     def get_tail_rids(self) -> list[int]:
         rid_low = self.curr_tail_rid - PhysicalPage.max_number_of_records
