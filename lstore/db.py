@@ -1,5 +1,5 @@
 from lstore.table import Table
-
+from lstore.bufferpool import Bufferpool
 
 class Database:
     def __init__(self):
@@ -21,7 +21,8 @@ class Database:
     """
 
     def create_table(self, name, num_columns, key_index):
-        table = Table(name, num_columns, key_index)
+        bufferpool = Bufferpool(16, "")
+        table = Table(name, num_columns, key_index, bufferpool)
         return table
 
     """

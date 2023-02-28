@@ -10,13 +10,15 @@ class Bufferpool:
         self.disk: DiskInterface = DiskInterface(path)
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
-        if (page_id in self.physical_pages or
-            self.disk.page_exists(page_id)):
-            return False
-
-        self.__evict_page_if_bufferpool_full()
-
-        physical_page: PhysicalPage = PhysicalPage()
+        if (page_id in self.physical_pages):
+            physical_page = self.physical_pages[page_id]
+        elif self.disk.page_exists(page_id):
+            self.__evict_page_if_bufferpool_full()
+            physical_page = self.disk.get_page(page_id)
+        else:
+            self.__evict_page_if_bufferpool_full()
+            physical_page: PhysicalPage = PhysicalPage()
+        
         physical_page.insert_value(value, slot_num)
         physical_page.set_dirty()
 

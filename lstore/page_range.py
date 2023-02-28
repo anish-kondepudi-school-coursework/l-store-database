@@ -7,6 +7,7 @@ from .config import (
     NUMBER_OF_METADATA_COLUMNS,
     LOGICAL_DELETE,
 )
+from .bufferpool import Bufferpool
 from .page import LogicalPage, BasePage, TailPage
 from .page_directory import PageDirectory
 from .rid import RID_Generator
@@ -19,12 +20,16 @@ class PageRange:
         num_cols: int,
         page_directory: PageDirectory,
         rid_generator: RID_Generator,
+        table_name: str,
+        bufferpool: Bufferpool,
         cumulative: bool,
     ):
         self.num_attr_cols: int = num_cols
         self.num_total_cols: int = num_cols + NUMBER_OF_METADATA_COLUMNS
-        self.base_pages: list[BasePage] = [BasePage(self.num_total_cols, rid_generator)]
-        self.tail_pages: list[TailPage] = [TailPage(self.num_total_cols, rid_generator)]
+        self.table_name = table_name
+        self.bufferpool = bufferpool
+        self.base_pages: list[BasePage] = [BasePage(table_name, self.num_total_cols, bufferpool, rid_generator)]
+        self.tail_pages: list[TailPage] = [TailPage(table_name, self.num_total_cols, bufferpool, rid_generator)]
         self.page_directory: PageDirectory = page_directory
         self.rid_generator: RID_Generator = rid_generator
         self.cumulative = cumulative
@@ -54,7 +59,7 @@ class PageRange:
 
         latest_base_page: BasePage = self.base_pages[-1]
         if latest_base_page.is_full():
-            new_base_page: BasePage = BasePage(self.num_total_cols, self.rid_generator)
+            new_base_page: BasePage = BasePage(self.table_name, self.num_total_cols, self.bufferpool, self.rid_generator)
             self.base_pages.append(new_base_page)
             latest_base_page = new_base_page
 
@@ -101,7 +106,7 @@ class PageRange:
         # Find latest tail page to insert next version of record
         latest_tail_page: TailPage = self.tail_pages[-1]
         if latest_tail_page.is_full():
-            new_tail_page = TailPage(self.num_total_cols, self.rid_generator)
+            new_tail_page = TailPage(self.table_name, self.num_total_cols, self.bufferpool, self.rid_generator)
             self.tail_pages.append(new_tail_page)
             latest_tail_page = new_tail_page
 

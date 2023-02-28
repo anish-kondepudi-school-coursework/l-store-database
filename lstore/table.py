@@ -8,7 +8,7 @@ from .index import Index
 from .rid import RID_Generator
 from .page_range import PageRange
 from .page_directory import PageDirectory
-
+from .bufferpool import Bufferpool
 
 class Record:
     def __init__(self, rid, key, columns):
@@ -29,11 +29,12 @@ class Table:
     """
 
     def __init__(
-        self, name: str, num_columns: int, primary_key_col: int, cumulative=True
+        self, name: str, num_columns: int, primary_key_col: int, bufferpool: Bufferpool, cumulative=True
     ):
         self.name: str = name
         self.primary_key_col: int = primary_key_col
         self.num_columns: int = num_columns
+        self.bufferpool = bufferpool
         self.index: Index = Index(self)
         self.page_directory: PageDirectory = PageDirectory()
         self.rid_generator: RID_Generator = RID_Generator()

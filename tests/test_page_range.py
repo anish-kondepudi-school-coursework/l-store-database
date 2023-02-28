@@ -1,6 +1,9 @@
 import unittest
+from unittest import mock
 import random
 from lstore import (
+    Bufferpool,
+    DiskInterface,
     PageDirectory,
     PageRange,
     RID_Generator,
@@ -17,6 +20,10 @@ class TestCumulativePageRange(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         self.num_cols: int = 3
+        self.table_name = ""
+        self.bufferpool = Bufferpool(1000, "")
+        self.bufferpool.disk: DiskInterface = mock.Mock()
+        self.bufferpool.disk.page_exists.return_value = False
         self.rid_generator: RID_Generator = RID_Generator()
         self.page_directory: PageDirectory = PageDirectory()
         self.max_base_page_records_per_page_range: int = (
@@ -32,7 +39,7 @@ class TestCumulativePageRange(unittest.TestCase):
     def test_invalidate_record(self):
         page_dir: PageDirectory = PageDirectory()
         page_range: PageRange = PageRange(
-            self.num_cols, page_dir, self.rid_generator, True
+            self.num_cols, page_dir, self.rid_generator, self.table_name, self.bufferpool, True
         )
         record = [1, 2, 3]
         base_rid = page_range.insert_record(record)
@@ -57,7 +64,7 @@ class TestCumulativePageRange(unittest.TestCase):
 
     def test_is_full(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, True
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
         )
         for _ in range(self.max_base_page_records_per_page_range):
             self.assertFalse(page_range.is_full())
@@ -66,7 +73,7 @@ class TestCumulativePageRange(unittest.TestCase):
 
     def test_insert_column(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, True
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
         )
 
         records_to_verify: list = []
@@ -83,9 +90,8 @@ class TestCumulativePageRange(unittest.TestCase):
 
     def test_insert_column_when_page_range_full(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, True
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
         )
-
         for _ in range(self.max_base_page_records_per_page_range):
             random_record = [
                 random.getrandbits(ATTRIBUTE_SIZE) for _ in range(self.num_cols)
@@ -106,14 +112,14 @@ class TestCumulativePageRange(unittest.TestCase):
 
     def test_get_latest_column_value_after_insert(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, True
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
         )
         base_rid = page_range.insert_record([1, 2, 3])
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
 
     def test_get_latest_column_value_after_update(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, True
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
         )
         base_rid = page_range.insert_record([1, 2, 3])
         page_range.update_record(base_rid, [None, 5, None])
@@ -121,7 +127,7 @@ class TestCumulativePageRange(unittest.TestCase):
 
     def test_update_record_for_small_number_of_updates(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, True
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
         )
         base_rid = page_range.insert_record([1, 2, 3])
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
@@ -150,7 +156,7 @@ class TestCumulativePageRange(unittest.TestCase):
         multiplier: int = 2
 
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, True
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
         )
         base_rid = page_range.insert_record([1, 2, 3])
 
@@ -236,9 +242,15 @@ class TestNonCumulativePageRange(unittest.TestCase):
         self.num_cols: int = 3
         self.rid_generator: RID_Generator = RID_Generator()
         self.page_directory: PageDirectory = PageDirectory()
+        self.table_name = "" 
         self.max_base_page_records_per_page_range: int = (
             MAX_BASE_PAGES_IN_PAGE_RANGE * (PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE)
         )
+        self.multiplier = 2
+        self.bufferpool = Bufferpool(self.max_base_page_records_per_page_range * self.multiplier * 4, "")
+        self.bufferpool.disk: DiskInterface = mock.Mock()
+        self.bufferpool.disk.page_exists.return_value = False
+       
 
     @classmethod
     def tearDownClass(self):
@@ -247,8 +259,9 @@ class TestNonCumulativePageRange(unittest.TestCase):
         self.max_base_page_records_per_page_range: int = None
 
     def test_is_full(self) -> None:
+        page_dir: PageDirectory = PageDirectory()
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, False
+            self.num_cols, page_dir, self.rid_generator, self.table_name, self.bufferpool, False
         )
         for _ in range(self.max_base_page_records_per_page_range):
             self.assertFalse(page_range.is_full())
@@ -258,7 +271,7 @@ class TestNonCumulativePageRange(unittest.TestCase):
     def test_invalidate_record(self):
         page_dir: PageDirectory = PageDirectory()
         page_range: PageRange = PageRange(
-            self.num_cols, page_dir, self.rid_generator, False
+            self.num_cols, page_dir, self.rid_generator, self.table_name, self.bufferpool, False
         )
         record = [1, 2, 3]
         base_rid = page_range.insert_record(record)
@@ -283,7 +296,7 @@ class TestNonCumulativePageRange(unittest.TestCase):
 
     def test_insert_column(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, False
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, False
         )
 
         records_to_verify: list = []
@@ -300,7 +313,7 @@ class TestNonCumulativePageRange(unittest.TestCase):
 
     def test_insert_column_when_page_range_full(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, False
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, False
         )
 
         for _ in range(self.max_base_page_records_per_page_range):
@@ -323,14 +336,14 @@ class TestNonCumulativePageRange(unittest.TestCase):
 
     def test_get_latest_column_value_after_insert(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, False
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, False
         )
         base_rid = page_range.insert_record([1, 2, 3])
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
 
     def test_get_latest_column_value_after_update(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, False
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, False
         )
         base_rid = page_range.insert_record([1, 2, 3])
         page_range.update_record(base_rid, [None, 5, None])
@@ -338,7 +351,7 @@ class TestNonCumulativePageRange(unittest.TestCase):
 
     def test_get_latest_column_value_after_multiple_updates(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, False
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, False
         )
         base_rid = page_range.insert_record([1, 2, 3])
         page_range.update_record(base_rid, [None, 5, None])
@@ -348,7 +361,7 @@ class TestNonCumulativePageRange(unittest.TestCase):
 
     def test_update_record_for_small_number_of_updates(self) -> None:
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, False
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, False
         )
         base_rid = page_range.insert_record([1, 2, 3])
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
@@ -374,16 +387,14 @@ class TestNonCumulativePageRange(unittest.TestCase):
         )
 
     def test_update_record_for_large_number_of_updates(self) -> None:
-        multiplier: int = 2
-
         page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, False
+            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, False
         )
         base_rid = page_range.insert_record([1, 2, 3])
 
         first_tail_rid = None 
         previous_tail_rid = base_rid
-        for _ in range(self.max_base_page_records_per_page_range * multiplier):
+        for _ in range(self.max_base_page_records_per_page_range * self.multiplier):
             tail_rid = page_range.update_record(base_rid, [4, 5, 6])
             if first_tail_rid is None:
                 first_tail_rid = tail_rid
@@ -406,18 +417,18 @@ class TestNonCumulativePageRange(unittest.TestCase):
         )
         self.assertEqual(
             first=len(page_range.tail_pages),
-            second=MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier,
+            second=MAX_BASE_PAGES_IN_PAGE_RANGE * self.multiplier,
             msg=f"Page range has unexpected number of tail pages. \
-                Expected {MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier} tail page. \
+                Expected {MAX_BASE_PAGES_IN_PAGE_RANGE * self.multiplier} tail page. \
                 Found {len(page_range.tail_pages)} tail page(s)",
         )
 
         page_range.update_record(base_rid, [4, 5, 6])
         self.assertEqual(
             first=len(page_range.tail_pages),
-            second=MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier + 1,
+            second=MAX_BASE_PAGES_IN_PAGE_RANGE * self.multiplier + 1,
             msg=f"Page range has unexpected number of tail pages. \
-                Expected {MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier + 1} tail page. \
+                Expected {MAX_BASE_PAGES_IN_PAGE_RANGE * self.multiplier + 1} tail page. \
                 Found {len(page_range.tail_pages)} tail page(s)",
         )
 
