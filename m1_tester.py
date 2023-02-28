@@ -45,6 +45,7 @@ for key in records:
             error = True
     if error:
         print('select error on', key, ':', record, ', correct:', records[key])
+        assert False
     else:
         pass
         # print('select on', key, ':', record)
@@ -67,6 +68,7 @@ for key in records:
                 error = True
         if error:
             print('update error on', original, 'and', updated_columns, ':', record, ', correct:', records[key])
+            assert False
         else:
             pass
             # print('update on', original, 'and', updated_columns, ':', record)
@@ -82,6 +84,7 @@ for c in range(0, grades_table.num_columns):
         result = query.sum(keys[r[0]], keys[r[1]], c)
         if column_sum != result:
             print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', result, ', correct: ', column_sum)
+            assert False
         else:
             pass
             # print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)

@@ -19,6 +19,7 @@ class Bufferpool:
             self.__evict_page_if_bufferpool_full()
             physical_page: PhysicalPage = PhysicalPage()
         
+        #print(f"bufferpool insert page: Inserting {value} in {slot_num}")
         physical_page.insert_value(value, slot_num)
         physical_page.set_dirty()
 
@@ -39,6 +40,7 @@ class Bufferpool:
 
     def get_page(self, page_id: str) -> PhysicalPage:
         if page_id in self.physical_pages:
+            #print("Bufferpool get page - found page ", page_id)
             return self.physical_pages[page_id]
 
         if not self.disk.page_exists(page_id):

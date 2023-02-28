@@ -2,7 +2,7 @@ name: Format and Test
 on: [push, pull_request]
 
 jobs:
-  unit-tests:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2 
@@ -15,4 +15,9 @@ jobs:
       - name: Run unit tests
         run: python3 -m unittest discover tests -v
 
+      - name: Run m1 tests
+        run: python3 m1_tester.py
+
+      - name: Run m2 tests
+        run: mkdir ECS165 ; python3 m2_tester_part1.py
       

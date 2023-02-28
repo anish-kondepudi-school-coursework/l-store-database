@@ -48,14 +48,19 @@ class TestCumulativePageRange(unittest.TestCase):
         record_update2 = [5, None, None]
         tail_rid2 = page_range.update_record(base_rid, record_update2)
         page_range.invalidate_record(base_rid)
-        base_record, slot_num = page_dir.get_page(base_rid)
-        base_indir_value = base_record.get_column_of_record(INDIRECTION_COLUMN, slot_num)
-        tail_record1, slot_num_tail1 = page_dir.get_page(base_rid)
-        tail1_indir_value = tail_record1.get_column_of_record(
+
+        base_page = page_dir.get_page(base_rid)
+        tail_page = page_dir.get_page(tail_rid1)
+
+        base_slot_num = self.rid_generator.get_slot_num(base_rid)
+        base_indir_value = base_page.get_column_of_record(INDIRECTION_COLUMN, base_slot_num)
+        
+        slot_num_tail1 = self.rid_generator.get_slot_num(tail_rid1)
+        tail1_indir_value = tail_page.get_column_of_record(
             INDIRECTION_COLUMN, slot_num_tail1
         )
-        tail_record2, slot_num_tail2 = page_dir.get_page(base_rid)
-        tail2_indir_value = tail_record2.get_column_of_record(
+        slot_num_tail2 = self.rid_generator.get_slot_num(tail_rid2)
+        tail2_indir_value = tail_page.get_column_of_record(
             INDIRECTION_COLUMN, slot_num_tail2
         )
         self.assertEqual(base_indir_value, LOGICAL_DELETE)
@@ -115,6 +120,7 @@ class TestCumulativePageRange(unittest.TestCase):
             self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
         )
         base_rid = page_range.insert_record([1, 2, 3])
+        print("test_get_latest_column_value_after_insert: ", base_rid)
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
 
     def test_get_latest_column_value_after_update(self) -> None:

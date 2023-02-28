@@ -46,7 +46,13 @@ class PageRange:
         curr_rid: int = base_rid
         tail_chain = []
         while True:
-            page, slot_num = self.page_directory.get_page(curr_rid)
+            if curr_rid == base_rid:
+                page = self.page_directory.get_page(self.rid_generator.base_rid_to_starting_rid(curr_rid))
+            else:
+                page = self.page_directory.get_page(self.rid_generator.tail_rid_to_starting_rid(curr_rid))
+            if page is None:
+                raise Exception(f"Page from rid {curr_rid} is none - base rid was {base_rid}, starting rid: {self.rid_generator.base_rid_to_starting_rid(curr_rid)}")
+            slot_num = self.rid_generator.get_slot_num(curr_rid)
             curr_rid = page.get_column_of_record(INDIRECTION_COLUMN, slot_num)
             page.update_indir_of_record(LOGICAL_DELETE, slot_num)
             if curr_rid == base_rid:
@@ -62,12 +68,16 @@ class PageRange:
             new_base_page: BasePage = BasePage(self.table_name, self.num_total_cols, self.bufferpool, self.rid_generator)
             self.base_pages.append(new_base_page)
             latest_base_page = new_base_page
+            #self.page_directory.insert_page(new_base_page.get_starting_rid(), latest_base_page, 0)
 
         rid, slot_num = latest_base_page.insert_record(
             columns + [0, INVALID_RID]
         )  # schema encoding and indirection set to 0
         latest_base_page.update_indir_of_record(rid, slot_num)
-        self.page_directory.insert_page(rid, latest_base_page, slot_num)
+        ##print("insert record, Inserting into page dir: ", latest_base_page.get_starting_rid())
+        self.page_directory.insert_page(latest_base_page.get_starting_rid(), latest_base_page)
+        # if latest_base_page.get_starting_rid() == 1:
+        #     print("Inserting into rid 1: ", latest_base_page)
         return rid
 
     def update_record(self, base_rid: int, columns_to_update: list) -> int:
@@ -111,16 +121,17 @@ class PageRange:
             latest_tail_page = new_tail_page
 
         # Insert new record and update page directory
+        #print("page range update_record: Inserting record with cols: ", new_tail_record_columns)
         new_tail_page_rid, new_tail_page_slot_num = latest_tail_page.insert_record(
             new_tail_record_columns
         )
         self.page_directory.insert_page(
-            new_tail_page_rid, latest_tail_page, new_tail_page_slot_num
+            latest_tail_page.get_starting_rid(), latest_tail_page
         )
 
         # Update indirection of base record to point to latest tail record
-        base_page, base_page_slot_num = self.page_directory.get_page(base_rid)
-        base_page.update_indir_of_record(new_tail_page_rid, base_page_slot_num)
+        base_page = self.page_directory.get_page(self.rid_generator.base_rid_to_starting_rid(base_rid))
+        base_page.update_indir_of_record(new_tail_page_rid, self.rid_generator.get_slot_num(base_rid))
 
         return new_tail_page_rid
 
@@ -131,7 +142,9 @@ class PageRange:
             return self.non_cumulative_get_latest_column_value(base_rid, column_index)
 
     def cumulative_get_latest_column_value(self, base_rid, column_index):
+        ##print("cumulative_get_latest_column_value - getting latest record")
         page, slot_num, _ = self.__get_latest_record_details(base_rid)
+        ##print(f"cumulative_get_latest_column_value - col index '{column_index}', slot num '{slot_num}'")
         return page.get_column_of_record(column_index, slot_num)
 
     def non_cumulative_get_latest_column_value(self, base_rid, column_index):
@@ -140,7 +153,8 @@ class PageRange:
             next_page_rid = page.get_column_of_record(INDIRECTION_COLUMN, slot_num)
             if next_page_rid == INVALID_RID:
                 break
-            page, slot_num = self.page_directory.get_page(next_page_rid)
+            page = self.page_directory.get_page(self.rid_generator.base_rid_to_starting_rid(next_page_rid))
+            slot_num = self.rid_generator.get_slot_num(next_page_rid)
             if next_page_rid == base_rid:
                 break
         column_value = page.get_column_of_record(column_index, slot_num)
@@ -159,7 +173,11 @@ class PageRange:
         curr_rid: int = base_rid
         tail_chain = []
         while True:
-            page, slot_num = self.page_directory.get_page(curr_rid)
+            if curr_rid == base_rid:
+                page = self.page_directory.get_page(self.rid_generator.base_rid_to_starting_rid(curr_rid))
+            else:
+                page = self.page_directory.get_page(self.rid_generator.tail_rid_to_starting_rid(curr_rid))
+            slot_num = self.rid_generator.get_slot_num(curr_rid)
             record = [
                 page.get_column_of_record(ind, slot_num)
                 for ind in range(self.num_total_cols)
@@ -177,17 +195,29 @@ class PageRange:
         base_record_indir_rid: int = base_page.get_column_of_record(
             INDIRECTION_COLUMN, base_page_slot_num
         )
-        if base_rid == base_record_indir_rid:
+        #print("pagerange.__get_latest_record_details: ", base_page, base_record_indir_rid)
+        if base_record_indir_rid == base_rid:
             return base_page, base_page_slot_num, base_rid
 
-        tail_page, tail_page_slot_num = self.page_directory.get_page(
-            base_record_indir_rid
-        )
+        # tail_page, tail_page_slot_num = self.page_directory.get_page(
+        #     self.rid_generator.tail_rid_to_starting_rid(base_record_indir_rid)
+        # )
+        tail_page, tail_page_slot_num = self.__get_tail_page_of_record(base_record_indir_rid)
         return tail_page, tail_page_slot_num, base_record_indir_rid
+
+    def __get_tail_page_of_record(self, tail_rid) -> Tuple[BasePage, int]:
+        tail_page = self.page_directory.get_page(self.rid_generator.tail_rid_to_starting_rid(tail_rid))
+        tail_page_slot_num = self.rid_generator.get_slot_num(tail_rid)
+        assert tail_page != None and tail_page_slot_num != INVALID_SLOT_NUM
+        return tail_page, tail_page_slot_num
 
     # note, we should consider making sure that the page retrieved is a BasePage object
     # rather than a parent LogicalPage
     def __get_base_page_of_record(self, base_rid) -> Tuple[BasePage, int]:
-        base_page, base_page_slot_num = self.page_directory.get_page(base_rid)
-        assert base_page != None and base_page_slot_num != INVALID_SLOT_NUM
+        ##print("In __get_base_page_of_record, have ", base_rid, self.rid_generator.base_rid_to_starting_rid(base_rid))
+        base_page = self.page_directory.get_page(self.rid_generator.base_rid_to_starting_rid(base_rid))
+        assert base_page != None
+        base_page_slot_num = self.rid_generator.get_slot_num(base_rid)
+        ##print("In __get_base_page_of_record, have slot number: ", base_page_slot_num)
+        assert base_page_slot_num != INVALID_SLOT_NUM
         return base_page, base_page_slot_num

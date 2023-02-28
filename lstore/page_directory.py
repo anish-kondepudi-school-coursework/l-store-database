@@ -8,13 +8,12 @@ class PageDirectory:
         self.page_directory = dict()
 
     def get_page(self, rid: int) -> Tuple[LogicalPage | None, int]:
-        return self.page_directory.get(rid, (None, INVALID_SLOT_NUM))
+        return self.page_directory.get(rid)
 
     def insert_page(
-        self, rid: int, base_page: BasePage, base_record_offset: int
+        self, rid: int, base_page: BasePage
     ) -> None:
-        assert rid not in self.page_directory
-        self.page_directory[rid] = base_page, base_record_offset
+        self.page_directory[rid] = base_page
 
     def delete_page(self, rid: int) -> None:
         assert rid in self.page_directory

@@ -24,3 +24,7 @@ class RID_Generator:
         page_rid_space = [rid for rid in range(rid_low+1, self.curr_tail_rid+1)]
         self.curr_tail_rid = rid_low
         return page_rid_space
+
+    def get_slot_num(self, rid: int) -> int:
+        assert rid != 0
+        return ((abs(rid) - 1) % PhysicalPage.max_number_of_records)
