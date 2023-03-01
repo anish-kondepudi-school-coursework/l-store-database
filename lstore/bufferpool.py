@@ -23,10 +23,12 @@ class Bufferpool:
             physical_page: PhysicalPage = PhysicalPage()
 
         #print(f"bufferpool insert page: Inserting {value} in {slot_num}")
+        physical_page.pin_page()
         physical_page.insert_value(value, slot_num)
         physical_page.set_dirty()
 
         self.physical_pages[page_id] = physical_page
+        physical_page.unpin_page()
         return True
 
     def copy_page(self, source_page_id: str, dest_page_id: str) -> bool:

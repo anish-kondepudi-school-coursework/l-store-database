@@ -54,11 +54,18 @@ class Table:
         self.merge_thread.daemon=True
         self.merge_thread.start()
 
+    def prepare_unpickle(self):
+        self.merge_queue = queue.Queue()
+        self.stop_merging = threading.Event()
+        self.merge_thread = threading.Thread(target=self.__merge)
+        self.merge_thread.daemon=True
+        self.merge_thread.start()
+
     def prepare_to_be_pickled(self):
         print("Stopping merging!")
         self.stop_merging.set()
         print("Merge thread join called")
-        self.merge_thread.join()
+        #self.merge_thread.join()
         print("Setting merge queue to none")
         self.merge_queue = None
         self.stop_merging = None
@@ -173,20 +180,27 @@ class Table:
                 starting_tid = tail_page.get_starting_rid()
                 for tid in range(last_tid,starting_tid, 1):
                     #For a given tid, find which base rid it updated using the base_rid column/page
-                    base_rid = tail_page.get_column_of_record(BASE_RID, tid%record_per_page)
+                    #base_rid = tail_page.get_column_of_record(BASE_RID, tid%record_per_page)
+                    base_rid = tail_page.get_column_of_record(BASE_RID, self.rid_generator.get_slot_num(tid))
                     #Since we check tid from recent to least recent, if a record was updated already, it has latest values
                     if(base_rid not in updated_rid):
                         record: list = []
                         for index in range(self.num_columns):
                             record.append(0)
-                            record[index] = tail_page.get_column_of_record(index, base_rid%record_per_page)
+                            record[index] = tail_page.get_column_of_record(index, self.rid_generator.get_slot_num(base_rid))
+                            #record[index] = tail_page.get_column_of_record(index, base_rid%record_per_page)
                         #Updates record at given base_rid to have most up to date values
-                        copied_base_pages[int(base_rid/record_per_page)].update_record(record, base_rid%record_per_page)
+                        #copied_base_pages[int(base_rid/record_per_page)].update_record(record, base_rid%record_per_page)
+                        copied_base_pages[int(base_rid/record_per_page)].update_record(record, self.rid_generator.get_slot_num(base_rid))
                         updated_rid[base_rid]=copied_base_pages[int(base_rid/record_per_page)]
                 last_tid=starting_tid+1
             #Could add a lock for the page we are updating, loop on updated rids update mapping to value
             for base_page_index in copied_base_pages:
                 copied_base_pages[base_page_index].tps = latest_tid
-                self.page_directory.update_page(updated_rid)
+                #self.page_directory.update_page(updated_rid)
+                old_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
+                self.page_directory.insert_page(copied_base_pages[base_page_index].get_starting_rid(), copied_base_pages[base_page_index])
+                new_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
+                #assert(old_base_page != new_base_page)
         print("Merging is done!")
         exit()

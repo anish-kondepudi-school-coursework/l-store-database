@@ -19,6 +19,8 @@ class Database:
         self.bufferpool = Bufferpool(MAX_BUFFERPOOL_SIZE, path)
         if self.file_exists(Database.database_file_name):
             self.table_name_to_table = self.load_data_from_disk(Database.database_file_name)
+            for name in self.table_name_to_table:
+                self.table_name_to_table[name].prepare_unpickle()
 
     def close(self):
         self.bufferpool.evict_all_pages()

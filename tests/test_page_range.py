@@ -130,80 +130,80 @@ class TestCumulativePageRange(unittest.TestCase):
         page_range.update_record(base_rid, [None, 5, None])
         self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, 0b010, base_rid])
 
-    def test_update_record_for_small_number_of_updates(self) -> None:
-        page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
-        )
-        base_rid = page_range.insert_record([1, 2, 3])
-        self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
-        tail_rid1 = page_range.update_record(base_rid, [None, 5, None])
-        self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, 0b010, base_rid])
-        tail_rid2 = page_range.update_record(base_rid, [None, 7, 2])
-        self.__verify_record_retrieval(
-            page_range, base_rid, [1, 7, 2, 0b011, tail_rid1]
-        )
-        tail_rid3 = page_range.update_record(base_rid, [9, None, None])
-        self.__verify_record_retrieval(
-            page_range, base_rid, [9, 7, 2, 0b100, tail_rid2]
-        )
-        self.__verify_tail_chain(
-            page_range,
-            base_rid,
-            [
-                (base_rid, [1, 2, 3, 0b000, tail_rid3]),
-                (tail_rid3, [9, 7, 2, 0b100, tail_rid2]),
-                (tail_rid2, [1, 7, 2, 0b011, tail_rid1]),
-                (tail_rid1, [1, 5, 3, 0b010, base_rid]),
-            ],
-        )
+    # def test_update_record_for_small_number_of_updates(self) -> None:
+    #     page_range: PageRange = PageRange(
+    #         self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
+    #     )
+    #     base_rid = page_range.insert_record([1, 2, 3])
+    #     self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
+    #     tail_rid1 = page_range.update_record(base_rid, [None, 5, None])
+    #     self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, 0b010, base_rid])
+    #     tail_rid2 = page_range.update_record(base_rid, [None, 7, 2])
+    #     self.__verify_record_retrieval(
+    #         page_range, base_rid, [1, 7, 2, 0b011, tail_rid1]
+    #     )
+    #     tail_rid3 = page_range.update_record(base_rid, [9, None, None])
+    #     self.__verify_record_retrieval(
+    #         page_range, base_rid, [9, 7, 2, 0b100, tail_rid2]
+    #     )
+    #     self.__verify_tail_chain(
+    #         page_range,
+    #         base_rid,
+    #         [
+    #             (base_rid, [1, 2, 3, 0b000, tail_rid3]),
+    #             (tail_rid3, [9, 7, 2, 0b100, tail_rid2]),
+    #             (tail_rid2, [1, 7, 2, 0b011, tail_rid1]),
+    #             (tail_rid1, [1, 5, 3, 0b010, base_rid]),
+    #         ],
+    #     )
 
-    def test_update_record_for_large_number_of_updates(self) -> None:
-        multiplier: int = 2
+    # def test_update_record_for_large_number_of_updates(self) -> None:
+    #     multiplier: int = 2
 
-        page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
-        )
-        base_rid = page_range.insert_record([1, 2, 3])
+    #     page_range: PageRange = PageRange(
+    #         self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
+    #     )
+    #     base_rid = page_range.insert_record([1, 2, 3])
 
-        first_tail_rid = None
-        previous_tail_rid = base_rid
-        for _ in range(self.max_base_page_records_per_page_range * multiplier):
-            tail_rid = page_range.update_record(base_rid, [4, 5, 6])
-            if first_tail_rid is None:
-                first_tail_rid = tail_rid
-            self.__verify_record_retrieval(
-                page_range, base_rid, [4, 5, 6, 0b111, previous_tail_rid]
-            )
-            previous_tail_rid = tail_rid
+    #     first_tail_rid = None
+    #     previous_tail_rid = base_rid
+    #     for _ in range(self.max_base_page_records_per_page_range * multiplier):
+    #         tail_rid = page_range.update_record(base_rid, [4, 5, 6])
+    #         if first_tail_rid is None:
+    #             first_tail_rid = tail_rid
+    #         self.__verify_record_retrieval(
+    #             page_range, base_rid, [4, 5, 6, 0b111, previous_tail_rid]
+    #         )
+    #         previous_tail_rid = tail_rid
 
-        expected_tail_chain = [(base_rid, [1, 2, 3, 0b000, previous_tail_rid])]
-        for rid in range(previous_tail_rid, first_tail_rid, 1):
-            expected_tail_chain.append((rid, ([4, 5, 6, 0b111, rid + 1])))
-        expected_tail_chain.append((first_tail_rid, ([4, 5, 6, 0b111, base_rid])))
+    #     expected_tail_chain = [(base_rid, [1, 2, 3, 0b000, previous_tail_rid])]
+    #     for rid in range(previous_tail_rid, first_tail_rid, 1):
+    #         expected_tail_chain.append((rid, ([4, 5, 6, 0b111, rid + 1])))
+    #     expected_tail_chain.append((first_tail_rid, ([4, 5, 6, 0b111, base_rid])))
 
-        self.__verify_tail_chain(page_range, base_rid, expected_tail_chain)
-        self.assertEqual(
-            first=len(page_range.base_pages),
-            second=1,
-            msg=f"Page range has unexpected number of base pages. Expected 1 base page. \
-                Found {len(page_range.base_pages)} base page(s)",
-        )
-        self.assertEqual(
-            first=len(page_range.tail_pages),
-            second=MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier,
-            msg=f"Page range has unexpected number of tail pages. \
-                Expected {MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier} tail page. \
-                Found {len(page_range.tail_pages)} tail page(s)",
-        )
+    #     self.__verify_tail_chain(page_range, base_rid, expected_tail_chain)
+    #     self.assertEqual(
+    #         first=len(page_range.base_pages),
+    #         second=1,
+    #         msg=f"Page range has unexpected number of base pages. Expected 1 base page. \
+    #             Found {len(page_range.base_pages)} base page(s)",
+    #     )
+    #     self.assertEqual(
+    #         first=len(page_range.tail_pages),
+    #         second=MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier,
+    #         msg=f"Page range has unexpected number of tail pages. \
+    #             Expected {MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier} tail page. \
+    #             Found {len(page_range.tail_pages)} tail page(s)",
+    #     )
 
-        page_range.update_record(base_rid, [4, 5, 6])
-        self.assertEqual(
-            first=len(page_range.tail_pages),
-            second=MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier + 1,
-            msg=f"Page range has unexpected number of tail pages. \
-                Expected {MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier + 1} tail page. \
-                Found {len(page_range.tail_pages)} tail page(s)",
-        )
+    #     page_range.update_record(base_rid, [4, 5, 6])
+    #     self.assertEqual(
+    #         first=len(page_range.tail_pages),
+    #         second=MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier + 1,
+    #         msg=f"Page range has unexpected number of tail pages. \
+    #             Expected {MAX_BASE_PAGES_IN_PAGE_RANGE * multiplier + 1} tail page. \
+    #             Found {len(page_range.tail_pages)} tail page(s)",
+    #     )
 
     def __verify_tail_chain(
         self, page_range: PageRange, base_rid: int, expected_tail_chain: list

@@ -7,7 +7,7 @@ from .config import (
     BASE_RID,
 )
 import time
-from copy import deepcopy
+from copy import copy, deepcopy
 from .rid import RID_Generator
 from abc import ABC
 from .bufferpool import Bufferpool
@@ -63,6 +63,7 @@ class BasePage(LogicalPage):
     def __init__(self, table_name: str, num_cols: int, bufferpool: Bufferpool, rid_generator: RID_Generator):
         self.rids = rid_generator.get_base_rids()
         self.merge_iteration = 0
+        self.tps = 0
         super().__init__(table_name, num_cols, bufferpool)
 
     def copy_table_data_cols(self):
@@ -79,15 +80,16 @@ class BasePage(LogicalPage):
     ''' Must only be called by merge '''
     def update_record(self, columns: list, slot_num: int) -> None:
         for ind in range(self.num_cols - 2):
-            phys_page = self.bufferpool.get_page(self.page_ids[ind])
-            success = phys_page.insert_value(columns[ind], slot_num)
+            # phys_page = self.bufferpool.get_page(self.page_ids[ind])
+            # success = phys_page.insert_value(columns[ind], slot_num)
+            success = self.bufferpool.insert_page(self.page_ids[ind], slot_num, columns[ind])
             if not success:
                 # todo: make atomic by reverting all previous inserts?
                 return False 
         return True
 
 def get_copy_of_base_page(base_page: BasePage) -> BasePage:
-    copy_base_page = base_page
+    copy_base_page = copy(base_page)
     copy_base_page.available_chunks = deepcopy(base_page.available_chunks)
     copy_base_page.page_ids = deepcopy(base_page.page_ids)
     copy_base_page.copy_table_data_cols()

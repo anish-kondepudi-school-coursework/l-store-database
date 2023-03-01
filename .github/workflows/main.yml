@@ -19,5 +19,5 @@ jobs:
         run: python3 m1_tester.py
 
       - name: Run m2 tests
-        run: mkdir ECS165 ; python3 m2_tester_part1.py
+        run: mkdir ECS165 ; python3 m2_tester_part1.py ; python3 m2_tester_part2.py
       
