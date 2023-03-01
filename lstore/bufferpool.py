@@ -1,6 +1,7 @@
 from .phys_page import PhysicalPage
 from .disk import DiskInterface
 from copy import deepcopy
+import os
 
 class Bufferpool:
 
@@ -8,6 +9,7 @@ class Bufferpool:
         self.max_buffer_pool_size: int = max_buffer_pool_size
         self.physical_pages: dict[str,PhysicalPage] = dict()
         self.disk: DiskInterface = DiskInterface(path)
+        os.makedirs(path, exist_ok=True)
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
         if (page_id in self.physical_pages):
@@ -18,7 +20,7 @@ class Bufferpool:
         else:
             self.__evict_page_if_bufferpool_full()
             physical_page: PhysicalPage = PhysicalPage()
-        
+
         #print(f"bufferpool insert page: Inserting {value} in {slot_num}")
         physical_page.insert_value(value, slot_num)
         physical_page.set_dirty()
@@ -29,7 +31,7 @@ class Bufferpool:
     def copy_page(self, source_page_id: str, dest_page_id: str) -> bool:
         if (dest_page_id in self.physical_pages or
             self.disk.page_exists(dest_page_id)):
-            return False        
+            return False
         self.__evict_page_if_bufferpool_full()
         source_page = self.get_page(source_page_id)
         source_page_copy = deepcopy(source_page)
