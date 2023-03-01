@@ -117,26 +117,34 @@ class TestSecondary(unittest.TestCase):
         RECORD_VALUE: int = 5
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
-            [2, 6, 5, 1, RECORD_VALUE],
-            [3, 2, 8, 3, RECORD_VALUE],
-            [9, 1, 5, 2, RECORD_VALUE],
-            [4, 1, 5, 5, RECORD_VALUE],
+            [2, 6, RECORD_VALUE, 1, RECORD_VALUE],
+            [3, 2, RECORD_VALUE, 3, RECORD_VALUE],
+            [9, 1, 1, 2, RECORD_VALUE],
+            [4, 1, 4, 5, RECORD_VALUE],
         ]
         for record in records:
             table.insert_record(record)
         # retrieving the rids of inserted records
-        expected_rids = [table.index.get_rid(record[0]) for record in records]
-        values_before_update = copy.deepcopy(
+        expected_rids_1 = [table.index.get_rid(record[0]) for record in records]
+        expected_rids_2 = [expected_rids_1[1], expected_rids_1[2]]
+        values_before_update_1 = copy.deepcopy(
             table.secondary_indices[4].search_record(RECORD_VALUE)
         )
+        values_before_update_2 = copy.deepcopy(
+            table.secondary_indices[2].search_record(RECORD_VALUE)
+        )
         # updating a value expected to be in index 4, ie 5th attribute
-        update_value = [4, 1, 4, 4, RECORD_VALUE - 1]
+        update_value = [4, 1, RECORD_VALUE, 4, RECORD_VALUE - 1]
         table.update_record(update_value[0], update_value)
         # extracting the new rid list, which should no longer contain expected_rid[-1]
-        values_after_update = table.secondary_indices[4].search_record(RECORD_VALUE)
-        self.assertEqual(expected_rids, values_before_update)
-        expected_rids.pop(-1)
-        self.assertEqual(expected_rids, values_after_update)
+        values_after_update_1 = table.secondary_indices[4].search_record(RECORD_VALUE)
+        values_after_update_2 = table.secondary_indices[2].search_record(RECORD_VALUE)
+        self.assertEqual(expected_rids_1, values_before_update_1)
+        self.assertEqual(expected_rids_2, values_before_update_2)
+        rid_add = expected_rids_1.pop(-1)
+        expected_rids_2.append(rid_add)
+        self.assertEqual(expected_rids_1, values_after_update_1)
+        self.assertEqual(expected_rids_2, values_after_update_2)
 
 
 if __name__ == "__main__":
