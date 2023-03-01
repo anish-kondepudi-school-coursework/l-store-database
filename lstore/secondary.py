@@ -44,7 +44,7 @@ class SecondaryIndex:
         """
         with open(self.index_name, "wb") as f:
             pickle.dump(self.dictionary, f)
-            pickle.dump(self.seeds)
+            pickle.dump(self.seeds, f)
 
     def add_record(self, key: int, rid: int):
         """

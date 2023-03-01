@@ -103,19 +103,10 @@ class Query:
         # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
         """
         columnList = list(columns)
-        # record1 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], 0)[0]
         try:
             result = self.table.update_record(primary_key, columnList)
         except AssertionError:
             return False
-        # assert(result)
-        # record2 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], -2)[0]
-        # rid = self.table.index.get_rid(primary_key)
-        # print(rid, " | " ,self.table.get_indirection_value(rid))
-        # print(record1.columns)
-        # print(record2.columns)
-        # print(self.table.page_ranges[0].base_pages[0].get_column_of_record(-1,0) )
-        # assert(record1.columns == record2.columns)
         return result
 
     def sum(self, start_range, end_range, aggregate_column_index):

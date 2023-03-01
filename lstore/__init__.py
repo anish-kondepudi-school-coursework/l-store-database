@@ -19,3 +19,4 @@ from .table import Table
 from .index import Index
 from .query import Query
 from .bufferpool import Bufferpool
+from .query import SecondaryIndex
