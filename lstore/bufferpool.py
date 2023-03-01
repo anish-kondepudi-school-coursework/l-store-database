@@ -9,7 +9,8 @@ class Bufferpool:
         self.max_buffer_pool_size: int = max_buffer_pool_size
         self.physical_pages: dict[str,PhysicalPage] = dict()
         self.disk: DiskInterface = DiskInterface(path)
-        os.makedirs(path, exist_ok=True)
+        if path != "":
+            os.makedirs(path, exist_ok=True)
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
         if (page_id in self.physical_pages):
