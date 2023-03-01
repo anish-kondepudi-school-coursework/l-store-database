@@ -54,7 +54,7 @@ class TestCumulativePageRange(unittest.TestCase):
 
         base_slot_num = self.rid_generator.get_slot_num(base_rid)
         base_indir_value = base_page.get_column_of_record(INDIRECTION_COLUMN, base_slot_num)
-        
+
         slot_num_tail1 = self.rid_generator.get_slot_num(tail_rid1)
         tail1_indir_value = tail_page.get_column_of_record(
             INDIRECTION_COLUMN, slot_num_tail1
@@ -120,7 +120,6 @@ class TestCumulativePageRange(unittest.TestCase):
             self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
         )
         base_rid = page_range.insert_record([1, 2, 3])
-        print("test_get_latest_column_value_after_insert: ", base_rid)
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
 
     def test_get_latest_column_value_after_update(self) -> None:
@@ -248,7 +247,7 @@ class TestCumulativePageRange(unittest.TestCase):
 #         self.num_cols: int = 3
 #         self.rid_generator: RID_Generator = RID_Generator()
 #         self.page_directory: PageDirectory = PageDirectory()
-#         self.table_name = "" 
+#         self.table_name = ""
 #         self.max_base_page_records_per_page_range: int = (
 #             MAX_BASE_PAGES_IN_PAGE_RANGE * (PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE)
 #         )
@@ -256,7 +255,7 @@ class TestCumulativePageRange(unittest.TestCase):
 #         self.bufferpool = Bufferpool(self.max_base_page_records_per_page_range * self.multiplier * 4, "")
 #         self.bufferpool.disk: DiskInterface = mock.Mock()
 #         self.bufferpool.disk.page_exists.return_value = False
-       
+
 
 #     @classmethod
 #     def tearDownClass(self):
@@ -398,7 +397,7 @@ class TestCumulativePageRange(unittest.TestCase):
 #         )
 #         base_rid = page_range.insert_record([1, 2, 3])
 
-#         first_tail_rid = None 
+#         first_tail_rid = None
 #         previous_tail_rid = base_rid
 #         for _ in range(self.max_base_page_records_per_page_range * self.multiplier):
 #             tail_rid = page_range.update_record(base_rid, [4, 5, 6])

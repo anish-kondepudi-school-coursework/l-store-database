@@ -1,20 +1,28 @@
 from lstore.table import Table
 from lstore.bufferpool import Bufferpool
 from lstore.config import MAX_BUFFERPOOL_SIZE
+import pickle
+import os
 
 class Database:
+
+    database_file_name: str = "database.db"
+
     def __init__(self):
+        self.path = None
         self.table_name_to_table = {}
         self.bufferpool = None
         pass
 
-    # Not required for milestone1
     def open(self, path):
+        self.path = path
         self.bufferpool = Bufferpool(MAX_BUFFERPOOL_SIZE, path)
-        # reload page directory and index from disk
+        if self.file_exists(Database.database_file_name):
+            self.table_name_to_table = self.load_data_from_disk(Database.database_file_name)
 
     def close(self):
         self.bufferpool.evict_all_pages()
+        self.save_data_to_disk(Database.database_file_name, self.table_name_to_table)
 
     """
     # Creates a new table
@@ -41,7 +49,18 @@ class Database:
     # Returns table with the passed name
     """
 
-    def get_table(self, name):
+    def get_table(self, name: str) -> Table:
         if name not in self.table_name_to_table:
             return Table(name, 5, 0, self.bufferpool)
         return self.table_name_to_table.get(name)
+
+    def file_exists(self, filename: str) -> bool:
+        return os.path.exists(f"{self.path}/{filename}")
+
+    def save_data_to_disk(self, filename: str, data) -> None:
+        with open(f"{self.path}/{filename}", "wb", pickle.HIGHEST_PROTOCOL) as file:
+            pickle.dump(data, file)
+
+    def load_data_from_disk(self, filename: str):
+        with open(f"{self.path}/{filename}", "rb", pickle.HIGHEST_PROTOCOL) as file:
+            return pickle.load(file)

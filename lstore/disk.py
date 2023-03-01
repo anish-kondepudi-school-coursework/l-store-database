@@ -17,14 +17,15 @@ class DiskInterface:
         with open(file_name, "rb") as file:
             data = file.read()
         return PhysicalPage(bytearray(data))
-    
+
     # todo: error handling?
     def write_page(self, page_id : str, page_to_write : PhysicalPage) -> None:
         file_name : str = self.__make_file_name(page_id)
+        # print(f"Current path is: {os.path.abspath(os.curdir)}")
+        # print(f"Trying to open: {os.path.join(os.path.abspath(os.curdir), file_name)}")
         data : bytes = bytes(page_to_write.get_data())
         with open(file_name, "wb") as file:
             file.write(data)
 
     def __make_file_name(self, page_id : str) -> str:
         return f"{self.path}/{page_id}"
-        
