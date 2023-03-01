@@ -14,7 +14,7 @@ class Index:
         assert key not in self.key_to_rid
         self.key_to_rid[key] = rid
 
-    def get_rid(self, key: int) -> None:
+    def get_rid(self, key: int) -> int:
         assert key in self.key_to_rid
         return self.key_to_rid[key]
 

@@ -9,6 +9,7 @@ from .rid import RID_Generator
 from .page_range import PageRange
 from .page_directory import PageDirectory
 from .secondary import SecondaryIndex
+from typing import List
 
 
 class Record:
@@ -133,22 +134,30 @@ class Table:
                 self.secondary_indices[i].add_record(new_attribute, rid)
         return new_rid != INVALID_RID
 
-    def get_latest_column_values(self, rid: int, projected_columns_index: list):
+    def get_latest_column_values(
+        self, ridList: int | List[int], projected_columns_index: list
+    ) -> List[List[int | None]]:
         """
         Retrieve attributes of record given desired columns and rid
-        :param rid: the rid of the record you need to retreive.
+        :param ridList: the rid(s) of the record(s) you need to retreive. Can be multiple on secondary indices or ranges
         :param projected_columns_index: what columns to return. array of 1 or 0 values.
+        :return: list of column values, where None is used to indicate that the column is not projected
         """
         assert len(projected_columns_index) == self.num_columns
+        if isinstance(ridList, int):
+            ridList = [ridList]
         """ index.get_rid() will throw assertion error and stop transaction if
             primary key does not exist in index -- keeps operations atomic """
-        page_range: PageRange = self.__find_page_range_with_rid(rid)
-        col_vals: list[int] = []
-        for col_ind in range(self.num_columns):
-            if projected_columns_index[col_ind] == 1:
-                col_val: int = page_range.get_latest_column_value(rid, col_ind)
-                col_vals.append(col_val)
-        return col_vals
+        records: List[List[int]] = []
+        for rid in ridList:
+            page_range: PageRange = self.__find_page_range_with_rid(rid)
+            col_vals: List[int] = []
+            for col_ind in range(self.num_columns):
+                if projected_columns_index[col_ind] == 1:
+                    col_val: int = page_range.get_latest_column_value(rid, col_ind)
+                    col_vals.append(col_val)
+            records.append(col_vals)
+        return records
 
     def __find_page_range_with_rid(self, rid: int):
         page_range_index: int = rid // self.num_records_in_page_range

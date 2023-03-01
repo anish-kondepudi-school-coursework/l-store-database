@@ -31,6 +31,24 @@ class TestQuery(unittest.TestCase):
         recordList = query.select(1, query.table.primary_key_col, [1, 1, 1, 1, 1])
         assert recordList[0].columns == record
 
+    def test_select_secondary_records(self) -> None:
+        table: Table = Table("table1", 5, 0)
+        query: Query = Query(table)
+        # defining records for secondary query
+        records: list[list[int]] = [
+            [1, 2, 3, 4, 5],
+            [2, 2, 3, 4, 5],
+            [3, 2, 3, 4, 5],
+        ]
+        # inserting records
+        for record in records:
+            query.insert(*record)
+        # selecting records
+        recordList = query.select(2, 1, [1, 1, 1, 1, 1])
+        # asserting records
+        for i in range(len(records)):
+            assert recordList[i].columns == records[i]
+
     def test_update_record_query(self) -> None:
         table: Table = Table("table1", 5, 0)
         query: Query = Query(table)
