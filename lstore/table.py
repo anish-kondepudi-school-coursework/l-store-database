@@ -49,24 +49,17 @@ class Table:
             )
         ]
         self.merge_queue = queue.Queue()
-        self.stop_merging = threading.Event()
         self.merge_thread = threading.Thread(target=self.__merge)
         self.merge_thread.daemon=True
         self.merge_thread.start()
 
     def prepare_unpickle(self):
         self.merge_queue = queue.Queue()
-        self.stop_merging = threading.Event()
         self.merge_thread = threading.Thread(target=self.__merge)
         self.merge_thread.daemon=True
         self.merge_thread.start()
 
     def prepare_to_be_pickled(self):
-        print("Stopping merging!")
-        self.stop_merging.set()
-        print("Merge thread join called")
-        #self.merge_thread.join()
-        print("Setting merge queue to none")
         self.merge_queue = None
         self.stop_merging = None
         self.merge_thread = None
@@ -75,7 +68,6 @@ class Table:
         rid: int = self.index.get_rid(primary_key)
         page_range: PageRange = self.__find_page_range_with_rid(rid)
         page_range.invalidate_record(rid)
-        #self.index.delete_key(primary_key)
 
     def insert_record(self, columns: list) -> bool:
         """abort operation if index already contains primary key -- keeps operations atomic"""
@@ -98,18 +90,6 @@ class Table:
             self.index.add_key_rid(columns[self.primary_key_col], rid_from_insertion)
             return True
         return False
-
-    # def update_record(self, primary_key: int, columns: list) -> bool:
-    #     """index.get_rid() will throw assertion error and stop transaction if
-    #     primary key does not exist in index -- keeps operations atomic"""
-    #     rid: int = self.index.get_rid(primary_key)
-    #     page_range_with_record: PageRange = self.__find_page_range_with_rid(rid)
-    #     self.index.delete_key(primary_key)
-    #     newPrimaryKey: int = primary_key
-    #     if columns[self.primary_key_col] != None:
-    #         newPrimaryKey = columns[self.primary_key_col]
-    #     self.index.add_key_rid(newPrimaryKey, rid)
-    #     return page_range_with_record.update_record(rid, columns) != INVALID_RID
 
     def update_record(self, primary_key: int, columns: list) -> bool:
         """index.get_rid() will throw assertion error and stop transaction if
@@ -165,13 +145,14 @@ class Table:
         original_base_pages = dict()
         copied_base_pages = dict()
         record_per_page = self.num_records_in_page_range // MAX_BASE_PAGES_IN_PAGE_RANGE
-        while(not self.stop_merging.is_set()):
+        while(1):
             updated_rid.clear
             original_base_pages.clear
             copied_base_pages.clear
             tail_page_set, updated_base_page_list, latest_tid = self.merge_queue.get(True)
             for base_page in updated_base_page_list:
                 copied_base_page = get_copy_of_base_page(base_page)
+                assert copied_base_page != base_page
                 original_base_pages[int(copied_base_page.get_starting_rid()/record_per_page)] = base_page
                 copied_base_pages[int(copied_base_page.get_starting_rid()/record_per_page)] = copied_base_page
             last_tid = latest_tid
@@ -180,7 +161,6 @@ class Table:
                 starting_tid = tail_page.get_starting_rid()
                 for tid in range(last_tid,starting_tid, 1):
                     #For a given tid, find which base rid it updated using the base_rid column/page
-                    #base_rid = tail_page.get_column_of_record(BASE_RID, tid%record_per_page)
                     base_rid = tail_page.get_column_of_record(BASE_RID, self.rid_generator.get_slot_num(tid))
                     #Since we check tid from recent to least recent, if a record was updated already, it has latest values
                     if(base_rid not in updated_rid):
@@ -188,9 +168,6 @@ class Table:
                         for index in range(self.num_columns):
                             record.append(0)
                             record[index] = tail_page.get_column_of_record(index, self.rid_generator.get_slot_num(base_rid))
-                            #record[index] = tail_page.get_column_of_record(index, base_rid%record_per_page)
-                        #Updates record at given base_rid to have most up to date values
-                        #copied_base_pages[int(base_rid/record_per_page)].update_record(record, base_rid%record_per_page)
                         copied_base_pages[int(base_rid/record_per_page)].update_record(record, self.rid_generator.get_slot_num(base_rid))
                         updated_rid[base_rid]=copied_base_pages[int(base_rid/record_per_page)]
                 last_tid=starting_tid+1
@@ -201,6 +178,4 @@ class Table:
                 old_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
                 self.page_directory.insert_page(copied_base_pages[base_page_index].get_starting_rid(), copied_base_pages[base_page_index])
                 new_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
-                #assert(old_base_page != new_base_page)
-        print("Merging is done!")
-        exit()
+                assert(old_base_page != new_base_page)
