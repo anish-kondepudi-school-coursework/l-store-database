@@ -1,5 +1,6 @@
 from lstore.table import Table, Record
 from lstore.index import Index
+from lstore.secondary import SecondaryIndex
 
 
 class Query:
@@ -68,9 +69,19 @@ class Query:
         """
         columnsList: list = []
         recordList: list[Record] = []
-        rid = self.table.index.get_rid(search_key)
-        if relative_version != 0:
-            rid = self.table.get_versioned_rid(rid, abs(relative_version))
+        # retrieve the rid of the record using indexing if possible, otherwise brute search needed
+        if search_key_index == self.table.primary_key_col:
+            rid = (
+                self.table.index.get_rid(search_key)
+                if relative_version == 0
+                else self.table.get_versioned_rid(rid, abs(relative_version))
+            )
+        elif self.table.secondary_indices[search_key_index] != None:
+            rid = self.table.secondary_indices[search_key_index].search_record(
+                search_key
+            )
+        else:  # need to implement brute force
+            rid = 69
         columnsList.append(
             self.table.get_latest_column_values(rid, projected_columns_index)
         )
@@ -78,24 +89,6 @@ class Query:
             record = Record(rid, search_key, columns)
             recordList.append(record)
         return recordList
-
-    # def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
-    #     columnsList: list = []
-    #     ridList: list = []
-    #     recordList: list[Record] = []
-    #     if(search_key_index!=self.table.primary_key_col):
-    #         #Convert secondary key  ©to list of primary keys
-    #         ridList.append(search_key)
-    #     else:
-    #         ridList.append(self.table.index.get_rid(search_key))
-    #     for rid in ridList:
-    #         for relativeVersion in range(0, abs(relative_version)):
-    #             rid=self.table.get_indirection_value(rid)
-    #         columnsList.append(self.table.get_latest_column_values(rid, projected_columns_index))
-    #     for columns in columnsList:
-    #         record = Record(rid, search_key, columns)
-    #         recordList.append(record)
-    #     return recordList
 
     def update(self, primary_key, *columns):
         """

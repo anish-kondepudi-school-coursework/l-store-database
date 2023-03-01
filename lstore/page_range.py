@@ -35,18 +35,24 @@ class PageRange:
             and self.base_pages[-1].is_full()
         )
 
-    # note that for milestone the record will never actually be deleted, only invalidated
-    # in the future record will be removed during merge cycles
-    def invalidate_record(self, base_rid: int):
+    def invalidate_record(self, base_rid: int, indexed_attributes: list[int]) -> list[int | None]:
+        """
+        #: this invalidates records and returns the attributes of the record for removal
+        from secondary indices
+        `base_rid`: the rid of the base record
+        `indexed_attributes`: what columns are maintained in secondary indices that need to be removed, array of 1 or 0 values
+        """
+        # saving the page and its attributes in active memory. keep in mind attributes of
+        # record are always integers
+        col_vals: list[int] = [None if attribute == False else int(self.get_latest_column_value(base_rid, i)) for i, attribute in enumerate(indexed_attributes)]
         curr_rid: int = base_rid
-        tail_chain = []
         while True:
             page, slot_num = self.page_directory.get_page(curr_rid)
             curr_rid = page.get_column_of_record(INDIRECTION_COLUMN, slot_num)
             page.update_indir_of_record(LOGICAL_DELETE, slot_num)
             if curr_rid == base_rid:
                 break
-        return tail_chain
+        return col_vals
 
     def insert_record(self, columns: list) -> int:
         if self.is_full():
@@ -65,9 +71,14 @@ class PageRange:
         self.page_directory.insert_page(rid, latest_base_page, slot_num)
         return rid
 
-    def update_record(self, base_rid: int, columns_to_update: list) -> int:
+    def update_record(self, base_rid: int, columns_to_update: list) -> Tuple[int, list[int | None]]:
+        """
+        #: updates record on the level of the page range and returns an array of the attributes
+        that need to be updated for secondary indexing
+        #: note, the *current* functioning of this method is dependent on a cumulative update
+        """
         assert len(columns_to_update) == self.num_attr_cols
-
+        needed_updates = []
         # Find latest version of record (may be in Base or Tail page)
         (
             latest_page,
@@ -85,6 +96,9 @@ class PageRange:
                 zip(latest_record_columns, columns_to_update)
             ):
                 new_tail_record_columns.append(old_col if new_col == None else new_col)
+                # check if new column value is different from old column value, and return old value
+                # if it is different, else return None
+                needed_updates.append(None if new_col == old_col or new_col == None else int(old_col))
         else:
             new_tail_record_columns = columns_to_update.copy()
 
@@ -117,7 +131,7 @@ class PageRange:
         base_page, base_page_slot_num = self.page_directory.get_page(base_rid)
         base_page.update_indir_of_record(new_tail_page_rid, base_page_slot_num)
 
-        return new_tail_page_rid
+        return new_tail_page_rid, needed_updates
 
     def get_latest_column_value(self, base_rid: int, column_index: int) -> int:
         if self.cumulative:

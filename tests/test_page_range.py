@@ -37,10 +37,11 @@ class TestCumulativePageRange(unittest.TestCase):
         record = [1, 2, 3]
         base_rid = page_range.insert_record(record)
         record_update1 = [None, 4, None]
-        tail_rid1 = page_range.update_record(base_rid, record_update1)
+        tail_rid1, _ = page_range.update_record(base_rid, record_update1)
         record_update2 = [5, None, None]
-        tail_rid2 = page_range.update_record(base_rid, record_update2)
-        page_range.invalidate_record(base_rid)
+        tail_rid2, _ = page_range.update_record(base_rid, record_update2)
+        vals = page_range.invalidate_record(base_rid, [1 for _ in range(self.num_cols)])
+        expected_attributes = [5, 4, 3] # since [1, 2,3] initial and [x,4,5] updates
         base_record, slot_num = page_dir.get_page(base_rid)
         base_indir_value = base_record.get_column_of_record(INDIRECTION_COLUMN, slot_num)
         tail_record1, slot_num_tail1 = page_dir.get_page(base_rid)
@@ -51,6 +52,7 @@ class TestCumulativePageRange(unittest.TestCase):
         tail2_indir_value = tail_record2.get_column_of_record(
             INDIRECTION_COLUMN, slot_num_tail2
         )
+        self.assertEqual(vals, expected_attributes)
         self.assertEqual(base_indir_value, LOGICAL_DELETE)
         self.assertEqual(tail1_indir_value, LOGICAL_DELETE)
         self.assertEqual(tail2_indir_value, LOGICAL_DELETE)
@@ -125,13 +127,13 @@ class TestCumulativePageRange(unittest.TestCase):
         )
         base_rid = page_range.insert_record([1, 2, 3])
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
-        tail_rid1 = page_range.update_record(base_rid, [None, 5, None])
+        tail_rid1, _ = page_range.update_record(base_rid, [None, 5, None])
         self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, 0b010, base_rid])
-        tail_rid2 = page_range.update_record(base_rid, [None, 7, 2])
+        tail_rid2, _ = page_range.update_record(base_rid, [None, 7, 2])
         self.__verify_record_retrieval(
             page_range, base_rid, [1, 7, 2, 0b011, tail_rid1]
         )
-        tail_rid3 = page_range.update_record(base_rid, [9, None, None])
+        tail_rid3, _ = page_range.update_record(base_rid, [9, None, None])
         self.__verify_record_retrieval(
             page_range, base_rid, [9, 7, 2, 0b100, tail_rid2]
         )
@@ -157,7 +159,7 @@ class TestCumulativePageRange(unittest.TestCase):
         first_tail_rid = None
         previous_tail_rid = base_rid
         for _ in range(self.max_base_page_records_per_page_range * multiplier):
-            tail_rid = page_range.update_record(base_rid, [4, 5, 6])
+            tail_rid, _ = page_range.update_record(base_rid, [4, 5, 6])
             if first_tail_rid is None:
                 first_tail_rid = tail_rid
             self.__verify_record_retrieval(
@@ -263,10 +265,11 @@ class TestNonCumulativePageRange(unittest.TestCase):
         record = [1, 2, 3]
         base_rid = page_range.insert_record(record)
         record_update1 = [None, 4, None]
-        tail_rid1 = page_range.update_record(base_rid, record_update1)
+        tail_rid1, _ = page_range.update_record(base_rid, record_update1)
         record_update2 = [5, None, None]
-        tail_rid2 = page_range.update_record(base_rid, record_update2)
-        page_range.invalidate_record(base_rid)
+        tail_rid2, _ = page_range.update_record(base_rid, record_update2)
+        expected_attributes = [5, 4, 3] # since [1, 2,3] initial and [x,4,5] updates
+        vals = page_range.invalidate_record(base_rid, [1 for _ in range(self.num_cols)])
         base_record, slot_num = page_dir.get_page(base_rid)
         base_indir_value = base_record.get_column_of_record(INDIRECTION_COLUMN, slot_num)
         tail_record1, slot_num_tail1 = page_dir.get_page(base_rid)
@@ -277,6 +280,7 @@ class TestNonCumulativePageRange(unittest.TestCase):
         tail2_indir_value = tail_record2.get_column_of_record(
             INDIRECTION_COLUMN, slot_num_tail2
         )
+        self.assertEqual(vals, expected_attributes)
         self.assertEqual(base_indir_value, LOGICAL_DELETE)
         self.assertEqual(tail1_indir_value, LOGICAL_DELETE)
         self.assertEqual(tail2_indir_value, LOGICAL_DELETE)
@@ -352,13 +356,13 @@ class TestNonCumulativePageRange(unittest.TestCase):
         )
         base_rid = page_range.insert_record([1, 2, 3])
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
-        tail_rid1 = page_range.update_record(base_rid, [None, 5, None])
+        tail_rid1, _ = page_range.update_record(base_rid, [None, 5, None])
         self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, 0b010, base_rid])
-        tail_rid2 = page_range.update_record(base_rid, [None, 7, 2])
+        tail_rid2, _ = page_range.update_record(base_rid, [None, 7, 2])
         self.__verify_record_retrieval(
             page_range, base_rid, [1, 7, 2, 0b011, tail_rid1]
         )
-        tail_rid3 = page_range.update_record(base_rid, [9, None, None])
+        tail_rid3, _ = page_range.update_record(base_rid, [9, None, None])
         self.__verify_record_retrieval(
             page_range, base_rid, [9, 7, 2, 0b100, tail_rid2]
         )
@@ -381,10 +385,10 @@ class TestNonCumulativePageRange(unittest.TestCase):
         )
         base_rid = page_range.insert_record([1, 2, 3])
 
-        first_tail_rid = None 
+        first_tail_rid = None
         previous_tail_rid = base_rid
         for _ in range(self.max_base_page_records_per_page_range * multiplier):
-            tail_rid = page_range.update_record(base_rid, [4, 5, 6])
+            tail_rid, _ = page_range.update_record(base_rid, [4, 5, 6])
             if first_tail_rid is None:
                 first_tail_rid = tail_rid
             self.__verify_record_retrieval(

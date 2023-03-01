@@ -10,6 +10,7 @@ from .rid import RID_Generator
 from abc import ABC, abstractmethod
 import time
 
+
 class LogicalPage(ABC):
     def __init__(self, num_cols: int, rid_generator: RID_Generator):
         self.num_cols = num_cols
@@ -36,6 +37,19 @@ class LogicalPage(ABC):
         assert self.__is_valid_column_index(column_index)
         return self.phys_pages[column_index].get_column_value(slot_num)
 
+    def get_columns(self, columns: list[int], slot_num: int) -> list[None | int]:
+        """
+        #: functions returns a list with elements indexed by attribute value
+        #: elements are None if the attribute is not requested, otherwise define
+        `columns`: list of which columns to return, array of 0 and 1
+        `slot_num`: the slot number of the attributes within the physical page
+        """
+        for i in columns:
+            assert self.__is_valid_column_index(i)
+        return [
+            None if i == 0 else self.get_column_of_record(i, slot_num) for i in columns
+        ]
+
     def update_indir_of_record(self, new_value: int, slot_num: int) -> bool:
         phys_page_of_indir = self.phys_pages[INDIRECTION_COLUMN]
         return phys_page_of_indir.insert_value(new_value, slot_num)
@@ -59,25 +73,26 @@ class TailPage(LogicalPage):
     def _generate_new_rid(self) -> int:
         return self.rid_generator.new_tail_rid()
 
+
 class PhysicalPage:
     max_number_of_records: int = PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
 
-    def __init__(self, data : bytearray | None = None):
+    def __init__(self, data: bytearray | None = None):
         if data is None:
             self.data = bytearray(PHYSICAL_PAGE_SIZE)
         else:
             assert len(data) == PHYSICAL_PAGE_SIZE
             self.data = data
-        self.pinned : int = 0
-        self.dirty : bool = False
-        self.timestamp : float = time.time()
+        self.pinned: int = 0
+        self.dirty: bool = False
+        self.timestamp: float = time.time()
 
     def get_data(self) -> bytearray:
         return self.data
 
     def is_dirty(self) -> bool:
         return self.dirty
-    
+
     def set_dirty(self) -> None:
         self.dirty = True
 
@@ -89,7 +104,7 @@ class PhysicalPage:
 
     def pin_page(self) -> None:
         self.pinned += 1
-    
+
     def unpin_page(self) -> None:
         self.pinned -= 1
 
