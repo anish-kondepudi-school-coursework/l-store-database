@@ -22,6 +22,8 @@ class Database:
 
     def close(self):
         self.bufferpool.evict_all_pages()
+        for name in self.table_name_to_table:
+            self.table_name_to_table[name].prepare_to_be_pickled()
         self.save_data_to_disk(Database.database_file_name, self.table_name_to_table)
 
     """

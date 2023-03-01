@@ -25,7 +25,7 @@ class PageRange:
         cumulative: bool,
     ):
         self.num_attr_cols: int = num_cols
-        self.num_total_cols: int = num_cols + NUMBER_OF_METADATA_COLUMNS
+        self.num_total_cols: int = num_cols + NUMBER_OF_METADATA_COLUMNS  - (1 if cumulative else 0)
         self.table_name = table_name
         self.bufferpool = bufferpool
         self.base_pages: list[BasePage] = [BasePage(table_name, self.num_total_cols, bufferpool, rid_generator)]
@@ -33,6 +33,10 @@ class PageRange:
         self.page_directory: PageDirectory = page_directory
         self.rid_generator: RID_Generator = rid_generator
         self.cumulative = cumulative
+        self.updated_base_pages: list[BasePage] = []
+        self.full_tail_pages: list[TailPage] = []
+        self.updated_base_rid = dict()
+        self.prev_tid=0
 
     def is_full(self) -> bool:
         return (
@@ -68,20 +72,32 @@ class PageRange:
             new_base_page: BasePage = BasePage(self.table_name, self.num_total_cols, self.bufferpool, self.rid_generator)
             self.base_pages.append(new_base_page)
             latest_base_page = new_base_page
-            #self.page_directory.insert_page(new_base_page.get_starting_rid(), latest_base_page, 0)
 
-        rid, slot_num = latest_base_page.insert_record(
-            columns + [0, INVALID_RID]
-        )  # schema encoding and indirection set to 0
+        if self.cumulative:
+            rid, slot_num = latest_base_page.insert_record(
+                columns + [0, INVALID_RID]
+            ) 
+        else:
+            rid, slot_num = latest_base_page.insert_record(
+                columns + [0, INVALID_RID, INVALID_RID]
+            ) # schema encoding and indirection set to 0
         latest_base_page.update_indir_of_record(rid, slot_num)
-        ##print("insert record, Inserting into page dir: ", latest_base_page.get_starting_rid())
         self.page_directory.insert_page(latest_base_page.get_starting_rid(), latest_base_page)
-        # if latest_base_page.get_starting_rid() == 1:
-        #     print("Inserting into rid 1: ", latest_base_page)
         return rid
 
+    def check_first_update(self, base_rid: int):
+        record: list = []
+        for index in range(self.num_attr_cols):
+            record.append(0)
+            record[index]= self.get_latest_column_value(base_rid, index)
+        self.update_record(base_rid, record)
+
     def update_record(self, base_rid: int, columns_to_update: list) -> int:
-        assert len(columns_to_update) == self.num_attr_cols
+        assert len(columns_to_update) == self.num_attr_cols 
+        if base_rid not in self.updated_base_rid and self.cumulative==True:
+            self.updated_base_rid[base_rid]=1
+            self.check_first_update(base_rid)
+
 
         # Find latest version of record (may be in Base or Tail page)
         (
@@ -103,19 +119,20 @@ class PageRange:
         else:
             new_tail_record_columns = columns_to_update.copy()
 
-        # Construct schema encoding integer for new record
-        schema_encoding_integer = 0
-        for ind, col in enumerate(columns_to_update):
-            schema_encoding_integer |= (
-                1 << (self.num_attr_cols - ind - 1) if col != None else 0
-            )
+        if not self.cumulative:
+            # Construct schema encoding integer for new record
+            schema_encoding_integer = 0
+            for ind, col in enumerate(columns_to_update):
+                schema_encoding_integer |= 1 << (self.num_attr_cols - ind - 1) if col != None else 0
+            new_tail_record_columns.append(schema_encoding_integer)
 
-        new_tail_record_columns.append(schema_encoding_integer)
+        new_tail_record_columns.append(base_rid)
         new_tail_record_columns.append(latest_record_rid)
 
         # Find latest tail page to insert next version of record
         latest_tail_page: TailPage = self.tail_pages[-1]
         if latest_tail_page.is_full():
+            self.full_tail_pages.append(latest_tail_page)
             new_tail_page = TailPage(self.table_name, self.num_total_cols, self.bufferpool, self.rid_generator)
             self.tail_pages.append(new_tail_page)
             latest_tail_page = new_tail_page
@@ -133,6 +150,8 @@ class PageRange:
         base_page = self.page_directory.get_page(self.rid_generator.base_rid_to_starting_rid(base_rid))
         base_page.update_indir_of_record(new_tail_page_rid, self.rid_generator.get_slot_num(base_rid))
 
+        if(base_page not in self.updated_base_pages):
+            self.updated_base_pages.append(base_page)    
         return new_tail_page_rid
 
     def get_latest_column_value(self, base_rid: int, column_index: int) -> int:

@@ -4,6 +4,7 @@ from .config import (
     INVALID_SLOT_NUM,
     INVALID_RID,
     NUM_METADATA_COLS,
+    BASE_RID,
 )
 import time
 from copy import deepcopy
@@ -52,7 +53,7 @@ class LogicalPage(ABC):
 
     def __is_valid_column_index(self, column_index: int) -> bool:
         return (0 <= column_index < self.num_cols) or (
-            column_index in (INDIRECTION_COLUMN, SCHEMA_ENCODING_COLUMN)
+            column_index in (INDIRECTION_COLUMN, BASE_RID, SCHEMA_ENCODING_COLUMN)
         )
     
     def get_starting_rid(self) -> int:
@@ -66,7 +67,7 @@ class BasePage(LogicalPage):
 
     def copy_table_data_cols(self):
         self.merge_iteration += 1
-        for col in range(self.num_cols-NUM_METADATA_COLS):
+        for col in range(self.num_cols-2):
             old_page_id = self.page_ids[col]
             new_page_id = self.get_page_id_of_col(col)
             self.bufferpool.copy_page(old_page_id, new_page_id)
@@ -77,7 +78,7 @@ class BasePage(LogicalPage):
 
     ''' Must only be called by merge '''
     def update_record(self, columns: list, slot_num: int) -> None:
-        for ind in range(self.num_cols):
+        for ind in range(self.num_cols - 2):
             phys_page = self.bufferpool.get_page(self.page_ids[ind])
             success = phys_page.insert_value(columns[ind], slot_num)
             if not success:
@@ -86,8 +87,9 @@ class BasePage(LogicalPage):
         return True
 
 def get_copy_of_base_page(base_page: BasePage) -> BasePage:
-    copy_base_page = deepcopy(base_page)
-    copy_base_page.bufferpool = base_page.bufferpool
+    copy_base_page = base_page
+    copy_base_page.available_chunks = deepcopy(base_page.available_chunks)
+    copy_base_page.page_ids = deepcopy(base_page.page_ids)
     copy_base_page.copy_table_data_cols()
     return copy_base_page
 

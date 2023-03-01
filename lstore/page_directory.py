@@ -18,3 +18,7 @@ class PageDirectory:
     def delete_page(self, rid: int) -> None:
         assert rid in self.page_directory
         del self.page_directory[rid]
+
+    def update_page(self, rid_list: dict()) -> None:
+        for rid in rid_list:
+            self.page_directory[rid]=rid_list[rid]

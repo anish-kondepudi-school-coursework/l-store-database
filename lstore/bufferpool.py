@@ -69,7 +69,7 @@ class Bufferpool:
             return
 
         physical_pages_and_page_ids: list[tuple[PhysicalPage,str]] = \
-            sorted([(phys_page, page_id) for page_id, phys_page in self.physical_pages.items()],
+            sorted([(phys_page, page_id) for page_id, phys_page in list(self.physical_pages.items())],
                    key=lambda x: x[0].get_timestamp())
 
         bufferpool_page_index: int = 0
