@@ -13,10 +13,33 @@ class DiskInterface:
         file_name : str = self.__make_file_name(page_id)
         return os.path.isfile(file_name)
 
+    # def get_page(self, page_id : str) -> PhysicalPage:
+    #     file_name : str = self.__make_file_name(page_id)
+    #     while True:
+    #         with open(file_name, "rb") as file:
+    #             data = file.read()
+    #         if len(data) != 0:
+    #             break
+    #     return PhysicalPage(bytearray(data))
+    
+    # # todo: error handling?
+    # def write_page(self, page_id : str, page_to_write : PhysicalPage) -> None:
+    #     file_name : str = self.__make_file_name(page_id)
+    #     data : bytes = bytes(page_to_write.get_data())
+    #     #print("---- start writing ----")
+    #     with open(file_name, "wb") as file:
+    #         # if page_id == "Grades_1_6_0":
+    #         #     print("disk.write_page - writing data to file: ", len(data), file_name)
+    #         file.write(data)
+    #     #print("---- end writing ----")
+
     def get_page(self, page_id : str) -> PhysicalPage:
         file_name : str = self.__make_file_name(page_id)
-        with open(file_name, "rb") as file:
-            compressed_data = file.read()
+        while True:
+            with open(file_name, "rb") as file:
+                compressed_data = file.read()
+            if len(compressed_data) != 0:
+                break
         uncompressed_data : bytearray = zlib.decompress(compressed_data)
         return PhysicalPage(bytearray(uncompressed_data))
 

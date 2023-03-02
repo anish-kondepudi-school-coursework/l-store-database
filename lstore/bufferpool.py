@@ -73,6 +73,10 @@ class Bufferpool:
         physical_pages_and_page_ids: list[tuple[PhysicalPage,str]] = \
             sorted([(phys_page, page_id) for page_id, phys_page in list(self.physical_pages.items())],
                    key=lambda x: x[0].get_timestamp())
+        # physical_pages_and_page_ids: list[tuple[PhysicalPage,str]] = \
+        #     sorted([(phys_page, page_id) for page_id, phys_page in list(self.physical_pages.items())],
+        #            key=lambda x: x[0].get_timestamp(),
+        #            reverse=True)
 
         bufferpool_page_index: int = 0
         while True:
@@ -81,9 +85,13 @@ class Bufferpool:
 
             if not physical_page.can_evict():
                 continue
-
+        
             if physical_page.is_dirty():
                 self.disk.write_page(page_id, physical_page)
-
+            
+            if not page_id in self.physical_pages:
+                continue
+            
             del self.physical_pages[page_id]
+            
             break
