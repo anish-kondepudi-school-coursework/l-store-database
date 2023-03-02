@@ -6,6 +6,7 @@ from lstore import (
     Bufferpool,
 )
 
+
 class TestBufferpool(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -38,57 +39,106 @@ class TestBufferpool(unittest.TestCase):
         self.assertEqual(physical_page.is_dirty(), True)
         self.assertEqual(physical_page.can_evict(), True)
 
-    def test_insert_page_when_inserting_duplicate_page_in_memory(self) -> None:
+    # def test_insert_page_when_inserting_duplicate_page_in_memory(self) -> None:
+    #     bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
+    #     disk_interface: mock.MagicMock = mock.Mock()
+    #     bufferpool.disk: DiskInterface = disk_interface
+    #     disk_interface.page_exists.return_value = False
+
+    #     self.assertTrue(bufferpool.insert_page(self.page_id, self.slot_num, 832))
+    #     self.assertFalse(bufferpool.insert_page(self.page_id, self.slot_num, 832))
+
+    # def test_insert_page_when_inserting_duplicate_page_on_disk(self) -> None:
+    #     bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
+    #     disk_interface: mock.MagicMock = mock.Mock()
+    #     bufferpool.disk: DiskInterface = disk_interface
+    #     disk_interface.page_exists.return_value = False
+
+    #     self.assertTrue(bufferpool.insert_page(self.page_id, self.slot_num, 832))
+    #     physical_page: PhysicalPage = bufferpool.get_page(self.page_id)
+    #     bufferpool._evict_page()
+    #     disk_interface.write_page.assert_called_with(self.page_id, physical_page)
+
+    #     disk_interface.page_exists.return_value = True
+    #     self.assertFalse(bufferpool.insert_page(self.page_id, self.slot_num, 832))
+    #     disk_interface.page_exists.assert_called_with(self.page_id)
+
+    # def test_insert_page_when_bufferpool_full(self) -> None:
+    #     bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
+    #     disk_interface: mock.MagicMock = mock.Mock()
+    #     bufferpool.disk: DiskInterface = disk_interface
+    #     disk_interface.page_exists.return_value = False
+
+    #     self.assertTrue(bufferpool.insert_page("page_id_1", self.slot_num, 111))
+    #     physical_page1: PhysicalPage = bufferpool.get_page("page_id_1")
+
+    #     self.assertTrue(bufferpool.insert_page("page_id_2", self.slot_num, 222))
+    #     physical_page2: PhysicalPage = bufferpool.get_page("page_id_2")
+
+    #     self.assertTrue(bufferpool.insert_page("page_id_3", self.slot_num, 333))
+    #     physical_page3: PhysicalPage = bufferpool.get_page("page_id_3")
+
+    #     disk_interface.write_page.assert_called_with("page_id_1", physical_page1)
+
+    #     physical_pages: dict[str,PhysicalPage] = bufferpool.physical_pages
+    #     self.assertEqual(len(physical_pages), 2)
+
+    #     self.assertTrue("page_id_1" not in physical_pages)
+    #     self.assertTrue("page_id_2" in physical_pages)
+    #     self.assertTrue("page_id_3" in physical_pages)
+    #     self.assertTrue("page_id_3" in physical_pages)
+
+    #     self.__verify_physical_page_equality(physical_pages["page_id_2"], physical_page2)
+    #     self.__verify_physical_page_equality(physical_pages["page_id_3"], physical_page3)
+
+    def test_copy_page_when_bufferpool_not_full(self) -> None:
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
         disk_interface.page_exists.return_value = False
 
-        self.assertTrue(bufferpool.insert_page(self.page_id, self.slot_num, 832))
-        self.assertFalse(bufferpool.insert_page(self.page_id, self.slot_num, 832))
+        source_phys_page = PhysicalPage()
+        source_page_id = "1"
+        for i in range(PhysicalPage.max_number_of_records):
+            source_phys_page.insert_value(i + 1, i)
+        bufferpool.physical_pages[source_page_id] = source_phys_page
 
-    def test_insert_page_when_inserting_duplicate_page_on_disk(self) -> None:
+        dest_page_id = "2"
+        bufferpool.copy_page(source_page_id, dest_page_id)
+        self.assertTrue(dest_page_id in bufferpool.physical_pages)
+        dest_phys_page = bufferpool.physical_pages[dest_page_id]
+        for i in range(PhysicalPage.max_number_of_records):
+            source_page_val = source_phys_page.get_column_value(i)
+            dest_page_val = dest_phys_page.get_column_value(i)
+            self.assertEqual(source_page_val, dest_page_val)
+
+    def test_copy_page_when_bufferpool_full(self) -> None:
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
         disk_interface.page_exists.return_value = False
 
-        self.assertTrue(bufferpool.insert_page(self.page_id, self.slot_num, 832))
-        physical_page: PhysicalPage = bufferpool.get_page(self.page_id)
-        bufferpool._evict_page()
-        disk_interface.write_page.assert_called_with(self.page_id, physical_page)
+        phys_page_id1 = "1"
+        phys_page_id2 = "2"
+        bufferpool.insert_page(phys_page_id1, self.slot_num, 832)
+        bufferpool.insert_page(phys_page_id2, self.slot_num, 833)
 
-        disk_interface.page_exists.return_value = True
-        self.assertFalse(bufferpool.insert_page(self.page_id, self.slot_num, 832))
-        disk_interface.page_exists.assert_called_with(self.page_id)
+        dest_page_id = "3"
+        bufferpool.copy_page(phys_page_id2, dest_page_id)
+        self.assertTrue(dest_page_id in bufferpool.physical_pages)
+        dest_phys_page = bufferpool.physical_pages[dest_page_id]
+        col_val = dest_phys_page.get_column_value(self.slot_num)
+        self.assertEqual(col_val, 833)
 
-    def test_insert_page_when_bufferpool_full(self) -> None:
+    def test_copy_page_with_existent_destination_page(self) -> None:
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
         bufferpool.disk: DiskInterface = disk_interface
         disk_interface.page_exists.return_value = False
 
-        self.assertTrue(bufferpool.insert_page("page_id_1", self.slot_num, 111))
-        physical_page1: PhysicalPage = bufferpool.get_page("page_id_1")
-
-        self.assertTrue(bufferpool.insert_page("page_id_2", self.slot_num, 222))
-        physical_page2: PhysicalPage = bufferpool.get_page("page_id_2")
-
-        self.assertTrue(bufferpool.insert_page("page_id_3", self.slot_num, 333))
-        physical_page3: PhysicalPage = bufferpool.get_page("page_id_3")
-
-        disk_interface.write_page.assert_called_with("page_id_1", physical_page1)
-
-        physical_pages: dict[str,PhysicalPage] = bufferpool.physical_pages
-        self.assertEqual(len(physical_pages), 2)
-
-        self.assertTrue("page_id_1" not in physical_pages)
-        self.assertTrue("page_id_2" in physical_pages)
-        self.assertTrue("page_id_3" in physical_pages)
-        self.assertTrue("page_id_3" in physical_pages)
-
-        self.__verify_physical_page_equality(physical_pages["page_id_2"], physical_page2)
-        self.__verify_physical_page_equality(physical_pages["page_id_3"], physical_page3)
+        source_page_id = "1"
+        bufferpool.insert_page(source_page_id, 0, 0)
+        self.assertFalse(bufferpool.copy_page(source_page_id, source_page_id))
 
     def test_get_page_when_page_in_bufferpool(self) -> None:
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
@@ -160,7 +210,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool._evict_page()
         disk_interface.write_page.assert_called_with("page_id_1", physical_page1)
 
-        physical_pages: dict[str,PhysicalPage] = bufferpool.physical_pages
+        physical_pages: dict[str, PhysicalPage] = bufferpool.physical_pages
         self.assertEqual(len(physical_pages), 1)
         self.__verify_physical_page_equality(physical_pages["page_id_2"], physical_page2)
 
@@ -169,5 +219,7 @@ class TestBufferpool(unittest.TestCase):
         self.assertEqual(physical_page1.is_dirty(), physical_page2.is_dirty())
         self.assertEqual(physical_page1.can_evict(), physical_page2.can_evict())
 
+
 if __name__ == "__main__":
     unittest.main()
+

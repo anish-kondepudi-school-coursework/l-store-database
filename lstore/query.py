@@ -53,9 +53,7 @@ class Query:
     """
 
     def select(self, search_key, search_key_index, projected_columns_index):
-        return self.select_version(
-            search_key, search_key_index, projected_columns_index, 0
-        )
+        return self.select_version(search_key, search_key_index, projected_columns_index, 0)
 
     """
     # Read matching record with specified search key
@@ -68,24 +66,22 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
 
-    def select_version(
-        self, search_key, search_key_index, projected_columns_index, relative_version
-    ):
-        """ note that for milestone 1, `search_key_index` is not used as we only select
-            based on primary key """
+    def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
+        """note that for milestone 1, `search_key_index` is not used as we only select
+        based on primary key"""
+        # try:
         columnsList: list = []
         recordList: list[Record] = []
         rid = self.table.index.get_rid(search_key)
         if relative_version != 0:
             rid = self.table.get_versioned_rid(rid, abs(relative_version))
-        columnsList.append(
-            self.table.get_latest_column_values(rid, projected_columns_index)
-        )
+        columnsList.append(self.table.get_latest_column_values(rid, projected_columns_index))
         for columns in columnsList:
             record = Record(rid, search_key, columns)
             recordList.append(record)
         return recordList
-
+        # except Exception:
+        #     return []
 
     # def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
     #     columnsList: list = []
@@ -113,19 +109,10 @@ class Query:
 
     def update(self, primary_key, *columns):
         columnList = list(columns)
-        # record1 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], 0)[0]
         try:
             result = self.table.update_record(primary_key, columnList)
         except AssertionError:
             return False
-        # assert(result)
-        # record2 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], -2)[0]
-        # rid = self.table.index.get_rid(primary_key)
-        # print(rid, " | " ,self.table.get_indirection_value(rid))
-        # print(record1.columns)
-        # print(record2.columns)
-        # print(self.table.page_ranges[0].base_pages[0].get_column_of_record(-1,0) )
-        # assert(record1.columns == record2.columns)
         return result
 
     """
@@ -150,9 +137,7 @@ class Query:
     # Returns False if no record exists in the given range
     """
 
-    def sum_version(
-        self, start_range, end_range, aggregate_column_index, relative_version
-    ):
+    def sum_version(self, start_range, end_range, aggregate_column_index, relative_version):
         aggregateSum: int = 0
         anyRecords: bool = False
         column_index_list: list = []
@@ -164,9 +149,7 @@ class Query:
         # print
         for key in range(start_range, end_range + 1):
             try:
-                record = self.select_version(
-                    key, self.table.primary_key_col, column_index_list, relative_version
-                )
+                record = self.select_version(key, self.table.primary_key_col, column_index_list, relative_version)
                 aggregateSum += record[0].columns[0]
                 anyRecords = True
             except:
@@ -185,9 +168,7 @@ class Query:
     """
 
     def increment(self, key, column):
-        r = self.select(key, self.table.primary_key_col, [1] * self.table.num_columns)[
-            0
-        ]
+        r = self.select(key, self.table.primary_key_col, [1] * self.table.num_columns)[0]
         if r is not False:
             updated_columns = [None] * self.table.num_columns
             updated_columns[column] = r.columns[column] + 1

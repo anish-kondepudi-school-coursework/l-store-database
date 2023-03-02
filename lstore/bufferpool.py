@@ -1,25 +1,44 @@
-from .page import PhysicalPage
+from .phys_page import PhysicalPage
 from .disk import DiskInterface
+from copy import deepcopy
+import os
+
 
 class Bufferpool:
-
     def __init__(self, max_buffer_pool_size: int, path: str) -> None:
         self.max_buffer_pool_size: int = max_buffer_pool_size
-        self.physical_pages: dict[str,PhysicalPage] = dict()
+        self.physical_pages: dict[str, PhysicalPage] = dict()
         self.disk: DiskInterface = DiskInterface(path)
+        if path != "":
+            os.makedirs(path, exist_ok=True)
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
-        if (page_id in self.physical_pages or
-            self.disk.page_exists(page_id)):
-            return False
+        if page_id in self.physical_pages:
+            physical_page = self.physical_pages[page_id]
+        elif self.disk.page_exists(page_id):
+            self.__evict_page_if_bufferpool_full()
+            physical_page = self.disk.get_page(page_id)
+        else:
+            self.__evict_page_if_bufferpool_full()
+            physical_page: PhysicalPage = PhysicalPage()
 
-        self.__evict_page_if_bufferpool_full()
-
-        physical_page: PhysicalPage = PhysicalPage()
+        physical_page.pin_page()
         physical_page.insert_value(value, slot_num)
         physical_page.set_dirty()
 
         self.physical_pages[page_id] = physical_page
+        physical_page.unpin_page()
+        return True
+
+    def copy_page(self, source_page_id: str, dest_page_id: str) -> bool:
+        if dest_page_id in self.physical_pages or self.disk.page_exists(dest_page_id):
+            return False
+        self.__evict_page_if_bufferpool_full()
+        source_page = self.get_page(source_page_id)
+        source_page_copy = deepcopy(source_page)
+        self.__evict_page_if_bufferpool_full()
+        source_page_copy.set_dirty()
+        self.physical_pages[dest_page_id] = source_page_copy
         return True
 
     def get_page(self, page_id: str) -> PhysicalPage:
@@ -48,9 +67,7 @@ class Bufferpool:
         if len(self.physical_pages) == 0:
             return
 
-        physical_pages_and_page_ids: list[tuple[PhysicalPage,str]] = \
-            sorted([(phys_page, page_id) for page_id, phys_page in self.physical_pages.items()],
-                   key=lambda x: x[0].get_timestamp())
+        physical_pages_and_page_ids: list[tuple[PhysicalPage, str]] = sorted([(phys_page, page_id) for page_id, phys_page in list(self.physical_pages.items())], key=lambda x: x[0].get_timestamp())
 
         bufferpool_page_index: int = 0
         while True:
@@ -63,5 +80,9 @@ class Bufferpool:
             if physical_page.is_dirty():
                 self.disk.write_page(page_id, physical_page)
 
+            if not page_id in self.physical_pages:
+                continue
+
             del self.physical_pages[page_id]
+
             break

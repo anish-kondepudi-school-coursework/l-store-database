@@ -1,6 +1,6 @@
 import unittest
 from unittest import mock
-from lstore import PageRange, Table
+from lstore import Bufferpool, DiskInterface, PageRange, Table
 
 
 class TestTable(unittest.TestCase):
@@ -12,8 +12,15 @@ class TestTable(unittest.TestCase):
     def tearDownClass(self):
         self.primary_key_col: int = None
 
+    def create_bufferpool(self) -> Bufferpool:
+        bufferpool = Bufferpool(1000, "")
+        bufferpool.disk: DiskInterface = mock.Mock()
+        bufferpool.disk.page_exists.return_value = False
+        return bufferpool
+
     def test_insert_record(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         page_range: mock.MagicMock = mock.Mock()
         page_range.is_full: mock.MagicMock = mock.Mock(return_value=False)
         table.page_ranges: list[PageRange] = [page_range]
@@ -24,7 +31,8 @@ class TestTable(unittest.TestCase):
         self.assertEqual(len(table.page_ranges), 1)
 
     def test_insert_record_latest_page_range_full(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         page_range: mock.MagicMock = mock.Mock()
         page_range.is_full: mock.MagicMock = mock.Mock(return_value=True)
         table.page_ranges: list[PageRange] = [page_range]
@@ -35,7 +43,8 @@ class TestTable(unittest.TestCase):
         self.assertEqual(len(table.page_ranges), 2)
 
     def test_insert_record_with_duplicate_key(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         table.index.key_exists: mock.MagicMock = mock.Mock(return_value=True)
         table.index.add_key_rid: mock.MagicMock = mock.Mock()
         page_range: mock.MagicMock = mock.Mock()
@@ -49,7 +58,8 @@ class TestTable(unittest.TestCase):
         self.assertFalse(table.index.add_key_rid.called)
 
     def test_update_existent_record(self) -> None:
-        table: Table = Table("table1", 3, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 3, self.primary_key_col, bufferpool)
         record: list[int] = [10, 20, 30]
         new_record: list[int] = [11, 21, 31]
 
@@ -65,19 +75,22 @@ class TestTable(unittest.TestCase):
             table.index.get_rid(record[self.primary_key_col])
 
     def test_update_non_existing_record(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         with self.assertRaises(AssertionError):
             table.update_record(1, [90, 14])
 
     def test_get_latest_column_values_after_insert(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         prim_key: int = 10
         record: list[int] = [prim_key, 20]
         table.insert_record(record)
         self._test_all_get_column_possibilities(prim_key, table, record)
 
     def test_get_latest_column_values_after_update(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         rid: int = table.insert_record([1, 2])
         new_prim_key: int = 90
         new_record: list[int] = [new_prim_key, 14]
@@ -85,7 +98,8 @@ class TestTable(unittest.TestCase):
         self._test_all_get_column_possibilities(new_prim_key, table, new_record)
 
     def test_delete_record(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         prim_key = 1
         table.insert_record([prim_key, 2])
         table.delete_record(prim_key)
@@ -100,19 +114,43 @@ class TestTable(unittest.TestCase):
         self.assertEqual(table.get_latest_column_values(rid, [1, 1]), record)
 
     def test_get_latest_column_values_nonexisting_record(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         with self.assertRaises(AssertionError):
             table.get_latest_column_values(1, [1, 1])
 
     def test_get_latest_column_values_invalid_projected_cols(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         with self.assertRaises(AssertionError):
             table.get_latest_column_values(1, [1, 1, 1])
 
     def test_delete_non_existing_record(self) -> None:
-        table: Table = Table("table1", 2, self.primary_key_col)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
         with self.assertRaises(AssertionError):
             table.delete_record(1)
+
+    def test_merge(self) -> None:
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 3, self.primary_key_col, bufferpool)
+        record: list[int] = [10, 20, 30]
+        inc: int = 0
+        table.insert_record(record)
+        rid: int = table.index.get_rid(record[self.primary_key_col])
+        base_page = table.page_directory.get_page(rid)
+        old_base_page = base_page
+        while base_page.tps == 0:
+            new_record: list[int] = [None, 20 + inc, 30 + inc]
+            table.update_record(record[self.primary_key_col], new_record)
+            base_page = table.page_directory.get_page(rid)
+            inc += 1
+        print(table.get_latest_column_values(rid, [1, 1, 1]))
+        self.assertNotEqual(base_page, old_base_page)
+        col_val = base_page.get_column_of_record(1, 0)
+        self.assertNotEqual(record[1], col_val)
+        col_val = base_page.get_column_of_record(2, 0)
+        self.assertNotEqual(record[2], col_val)
 
 
 if __name__ == "__main__":

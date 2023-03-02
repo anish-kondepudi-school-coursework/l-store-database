@@ -1,8 +1,12 @@
 import unittest
+from unittest import mock
 from lstore import (
+    Bufferpool,
+    DiskInterface,
     PhysicalPage,
     LogicalPage,
     BasePage,
+    get_copy_of_base_page,
     TailPage,
     ATTRIBUTE_SIZE,
     INDIRECTION_COLUMN,
@@ -10,8 +14,7 @@ from lstore import (
     INVALID_RID,
     SCHEMA_ENCODING_COLUMN,
     RID_Generator,
-    START_BASE_RID,
-    START_TAIL_RID,
+    NUM_METADATA_COLS,
 )
 from abc import ABC
 
@@ -29,7 +32,7 @@ class TestPhysPage(unittest.TestCase):
     def test_insert_value_for_INVALID_SLOT_NUMs(self) -> None:
         page: PhysicalPage = PhysicalPage()
         orig_time_stamp = page.get_timestamp()
-        
+
         for INVALID_SLOT_NUM in [-1, PhysicalPage.max_number_of_records]:
             success = page.insert_value(123, INVALID_SLOT_NUM)
             self.assertFalse(success)
@@ -48,7 +51,7 @@ class TestPhysPage(unittest.TestCase):
                 page.insert_value(value_to_insert, offset)
             self.assertFalse(page.is_dirty())
             self.assertEqual(orig_time_stamp, page.get_timestamp())
-        
+
     def test_get_column_value_for_valid_integers(self) -> None:
         page: PhysicalPage = PhysicalPage()
         orig_time_stamp = page.timestamp
@@ -74,12 +77,19 @@ class TestPhysPage(unittest.TestCase):
         page.unpin_page()
         self.assertTrue(page.can_evict())
 
+
 class LogicalPageTests(ABC):
     @classmethod
     def setUpClass(self):
         self.num_cols: int = 3
         self.values_to_insert: list[int] = [0, 4, 10]
         self.rid_generator = RID_Generator()
+        self.max_bufferpool_pages: int = 200
+        self.path = ""
+        self.bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
+        disk_interface: mock.MagicMock = mock.Mock()
+        self.bufferpool.disk: DiskInterface = disk_interface
+        disk_interface.page_exists.return_value = False
 
     @classmethod
     def tearDownClass(self):
@@ -96,7 +106,7 @@ class LogicalPageTests(ABC):
         self.assertNotEqual(rid, INVALID_RID)
         self.assertNotEqual(offset, INVALID_SLOT_NUM)
         for ind in range(self.num_cols):
-            given_col = page.phys_pages[ind].get_column_value(offset)
+            given_col = page.bufferpool.get_page(page.page_ids[ind]).get_column_value(offset)
             exp_col = self.values_to_insert[ind]
             self.assertEqual(given_col, exp_col)
 
@@ -147,29 +157,136 @@ class LogicalPageTests(ABC):
 
     def test_update_indir(self) -> None:
         page: LogicalPage = self.init_page()
-        _, offset = page.insert_record(self.values_to_insert)
+        _, slot_num = page.insert_record(self.values_to_insert)
         new_indir_val = 5
-        res = page.update_indir_of_record(new_indir_val, offset)
+        res = page.update_indir_of_record(new_indir_val, slot_num)
         self.assertTrue(res)
-        given_indir_val = page.phys_pages[INDIRECTION_COLUMN].get_column_value(offset)
+        given_indir_val = page.bufferpool.get_page(page.page_ids[INDIRECTION_COLUMN]).get_column_value(slot_num)
         self.assertEqual(given_indir_val, new_indir_val)
 
 
 class TestBasePage(LogicalPageTests, unittest.TestCase):
     def init_page(self) -> BasePage:
-        return BasePage(self.num_cols, self.rid_generator)
-    
+        return BasePage("", self.num_cols, self.bufferpool, self.rid_generator)
+
+    def test_update_record(self) -> None:
+        page: BasePage = self.init_page()
+        new_cols = [i + 1 for i in range(self.num_cols)]
+        _, slot_num = page.insert_record(self.values_to_insert)
+        success = page.update_record(new_cols, slot_num)
+        self.assertTrue(success)
+        for ind in range(self.num_cols):
+            given_col = page.bufferpool.get_page(page.page_ids[ind]).get_column_value(slot_num)
+            exp_col = new_cols[ind]
+            self.assertEqual(given_col, exp_col)
+
+    def test_get_copy_page_ids(self) -> None:
+        page: BasePage = self.init_page()
+        page.insert_record(self.values_to_insert)
+        copied_page: BasePage = get_copy_of_base_page(page)
+        for i in range(self.num_cols - NUM_METADATA_COLS):
+            self.assertNotEqual(page.page_ids[i], copied_page.page_ids[i])
+        for i in range(self.num_cols - NUM_METADATA_COLS, self.num_cols):
+            self.assertEqual(page.page_ids[i], copied_page.page_ids[i])
+
+    def test_get_copy_after_insert(self) -> None:
+        page: BasePage = self.init_page()
+        _, slot_num = page.insert_record(self.values_to_insert)
+        copied_page: BasePage = get_copy_of_base_page(page)
+        for ind in range(self.num_cols):
+            given_col = copied_page.bufferpool.get_page(copied_page.page_ids[ind]).get_column_value(slot_num)
+            exp_col = self.values_to_insert[ind]
+            self.assertEqual(given_col, exp_col)
+
+    def test_get_copy_update_record(self) -> None:
+        page: BasePage = self.init_page()
+        _, slot_num = page.insert_record(self.values_to_insert)
+        copied_page: BasePage = get_copy_of_base_page(page)
+        new_cols = [i + 1 for i in range(self.num_cols)]
+        copied_page.update_record(new_cols, slot_num)
+        """ The original records data columns should not be changed """
+        for ind in range(self.num_cols - NUM_METADATA_COLS):
+            orig_page_col = page.bufferpool.get_page(page.page_ids[ind]).get_column_value(slot_num)
+            copied_page_col = copied_page.bufferpool.get_page(copied_page.page_ids[ind]).get_column_value(slot_num)
+            self.assertNotEqual(orig_page_col, copied_page_col)
+        """ The original records metadata columns should be changed s"""
+        for ind in range(self.num_cols - NUM_METADATA_COLS, self.num_cols):
+            orig_page_col = page.bufferpool.get_page(page.page_ids[ind]).get_column_value(slot_num)
+            copied_page_col = copied_page.bufferpool.get_page(copied_page.page_ids[ind]).get_column_value(slot_num)
+            self.assertEqual(orig_page_col, copied_page_col)
+
     def check_rid_is_valid(self, rid) -> None:
         self.assertGreaterEqual(rid, 1)
 
 
 class TestTailPage(LogicalPageTests, unittest.TestCase):
     def init_page(self) -> TailPage:
-        return TailPage(self.num_cols, self.rid_generator)
-    
+        return TailPage("", self.num_cols, self.bufferpool, self.rid_generator)
+
     def check_rid_is_valid(self, rid) -> None:
         self.assertLessEqual(rid, -1)
 
 
 if __name__ == "__main__":
     unittest.main()
+    # buff = Bufferpool(16, "")
+    # bp = BasePage("asf", 5, buff, RID_Generator())
+    # bp.insert_record([1, 2, 3, 0, 0])
+    # buff.evict_all_pages()
+    # print("Col: ", bp.get_column_of_record(0, 0))
+    # print("Col: ", bp.get_column_of_record(1, 0))
+    # print("Col: ", bp.get_column_of_record(2, 0))
+    # print("Col: ", bp.get_column_of_record(3, 0))
+    # print("Col: ", bp.get_column_of_record(4, 0))
+
+    # bp.update_indir_of_record(12, 0)
+    # buff.evict_all_pages()
+    # print("Col: ", bp.get_column_of_record(0, 0))
+    # print("Col: ", bp.get_column_of_record(1, 0))
+    # print("Col: ", bp.get_column_of_record(2, 0))
+    # print("Col: ", bp.get_column_of_record(3, 0))
+    # print("Col: ", bp.get_column_of_record(4, 0))
+
+    # buff.evict_all_pages()
+    # bp.update_record([5, 6, 3, 5, 4], 0)
+    # buff.evict_all_pages()
+    # print("Col: ", bp.get_column_of_record(0, 0))
+    # print("Col: ", bp.get_column_of_record(1, 0))
+    # print("Col: ", bp.get_column_of_record(2, 0))
+    # print("Col: ", bp.get_column_of_record(3, 0))
+    # print("Col: ", bp.get_column_of_record(4, 0))
+
+    # from lstore.page import get_copy_of_base_page
+    # bp2 = get_copy_of_base_page(bp)
+    # print(bp2.merge_iteration, bp.merge_iteration)
+    # print(bp2.page_ids, bp.page_ids)
+    # print("Col: ", bp2.get_column_of_record(0, 511))
+    # print("Col: ", bp2.get_column_of_record(1, 511))
+    # print("Col: ", bp2.get_column_of_record(2, 511))
+    # print("Col: ", bp2.get_column_of_record(3, 511))
+    # print("Col: ", bp2.get_column_of_record(4, 511))
+
+    # bp2.update_record([1, 2, 2, 3, 4], 511)
+    # print("Col: ", bp2.get_column_of_record(0, 511))
+    # print("Col: ", bp2.get_column_of_record(1, 511))
+    # print("Col: ", bp2.get_column_of_record(2, 511))
+    # print("Col: ", bp2.get_column_of_record(3, 511))
+    # print("Col: ", bp2.get_column_of_record(4, 511))
+
+    # #buff.evict_all_pages()
+    # print("Previous:")
+    # print("Col: ", bp.get_column_of_record(0, 511))
+    # print("Col: ", bp.get_column_of_record(1, 511))
+    # print("Col: ", bp.get_column_of_record(2, 511))
+    # print("Col: ", bp.get_column_of_record(3, 511))
+    # print("Col: ", bp.get_column_of_record(4, 511))
+
+    """
+        for tests of get copy:
+            make sure that if the copied base page updates the indirection, then the original base page
+            can see that update, but that if the copied base page updates a data column in the table,
+            the original base page DOESN't see that change 
+    """
+
+    # print(buff.get_page("asf_1_0").get_column_value(0))
+    # unittest.main()
