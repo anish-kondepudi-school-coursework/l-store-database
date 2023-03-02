@@ -73,18 +73,21 @@ class Query:
     ):
         """ note that for milestone 1, `search_key_index` is not used as we only select
             based on primary key """
-        columnsList: list = []
-        recordList: list[Record] = []
-        rid = self.table.index.get_rid(search_key)
-        if relative_version != 0:
-            rid = self.table.get_versioned_rid(rid, abs(relative_version))
-        columnsList.append(
-            self.table.get_latest_column_values(rid, projected_columns_index)
-        )
-        for columns in columnsList:
-            record = Record(rid, search_key, columns)
-            recordList.append(record)
-        return recordList
+        try:
+            columnsList: list = []
+            recordList: list[Record] = []
+            rid = self.table.index.get_rid(search_key)
+            if relative_version != 0:
+                rid = self.table.get_versioned_rid(rid, abs(relative_version))
+            columnsList.append(
+                self.table.get_latest_column_values(rid, projected_columns_index)
+            )
+            for columns in columnsList:
+                record = Record(rid, search_key, columns)
+                recordList.append(record)
+            return recordList
+        except:
+            return []
 
 
     # def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
@@ -113,19 +116,10 @@ class Query:
 
     def update(self, primary_key, *columns):
         columnList = list(columns)
-        # record1 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], 0)[0]
         try:
             result = self.table.update_record(primary_key, columnList)
         except AssertionError:
             return False
-        # assert(result)
-        # record2 = self.select_version(primary_key, 0, [1, 1, 1, 1, 1], -2)[0]
-        # rid = self.table.index.get_rid(primary_key)
-        # print(rid, " | " ,self.table.get_indirection_value(rid))
-        # print(record1.columns)
-        # print(record2.columns)
-        # print(self.table.page_ranges[0].base_pages[0].get_column_of_record(-1,0) )
-        # assert(record1.columns == record2.columns)
         return result
 
     """

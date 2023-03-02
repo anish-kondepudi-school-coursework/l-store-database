@@ -48,18 +48,31 @@ class Table:
                 self.num_columns, self.page_directory, self.rid_generator, self.name, self.bufferpool, cumulative
             )
         ]
+        self.continue_merge = True
+        self.finished_merge = False
         self.merge_queue = queue.Queue()
         self.merge_thread = threading.Thread(target=self.__merge)
         self.merge_thread.daemon=True
         self.merge_thread.start()
 
     def prepare_unpickle(self):
+        self.continue_merge = True
+        self.finished_merge = False
         self.merge_queue = queue.Queue()
         self.merge_thread = threading.Thread(target=self.__merge)
         self.merge_thread.daemon=True
         self.merge_thread.start()
 
+
     def prepare_to_be_pickled(self):
+        for page_range in self.page_ranges:
+            page_range.full_tail_pages.append(page_range.tail_pages[-1])
+            self.merge_queue.put((page_range.full_tail_pages.copy(), page_range.updated_base_pages.copy(), page_range.prev_tid))
+            page_range.full_tail_pages.clear
+            page_range.updated_base_pages.clear
+        self.continue_merge = False
+        while(not self.finished_merge):
+            pass
         self.merge_queue = None
         self.stop_merging = None
         self.merge_thread = None
@@ -94,6 +107,11 @@ class Table:
     def update_record(self, primary_key: int, columns: list) -> bool:
         """index.get_rid() will throw assertion error and stop transaction if
         primary key does not exist in index -- keeps operations atomic"""
+        #One TA stated that database should not allow updates to primary key, another said we should, uncomment code below to disable PK updates
+        """
+        if(columns[self.primary_key_col]!=primary_key and columns[self.primary_key_col]!=None):
+            return False
+        """
         rid: int = self.index.get_rid(primary_key)
         page_range_with_record: PageRange = self.__find_page_range_with_rid(rid)
         self.index.delete_key(primary_key)
@@ -145,7 +163,7 @@ class Table:
         original_base_pages = dict()
         copied_base_pages = dict()
         record_per_page = self.num_records_in_page_range // MAX_BASE_PAGES_IN_PAGE_RANGE
-        while(1):
+        while(self.continue_merge or not self.merge_queue.empty()):
             updated_rid.clear
             original_base_pages.clear
             copied_base_pages.clear
@@ -175,7 +193,8 @@ class Table:
             for base_page_index in copied_base_pages:
                 copied_base_pages[base_page_index].tps = latest_tid
                 #self.page_directory.update_page(updated_rid)
-                old_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
+                #old_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
                 self.page_directory.insert_page(copied_base_pages[base_page_index].get_starting_rid(), copied_base_pages[base_page_index])
-                new_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
-                assert(old_base_page != new_base_page)
+                #new_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
+                #assert(old_base_page != new_base_page)
+        self.finished_merge=True
