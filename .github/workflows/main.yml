@@ -26,6 +26,9 @@ jobs:
 
       - name: Run m1 tests
         run: python3 m1_tester.py
+      
+      - name: Run exam m1 tests
+        run: python3 exam_tester_m1.py
 
   m2-tests:
     runs-on: ubuntu-latest
@@ -39,4 +42,6 @@ jobs:
         
       - name: Run m2 tests
         run: mkdir ECS165 ; python3 m2_tester_part1.py ; python3 m2_tester_part2.py
-    
+
+      - name: Run exam m2 tests
+        run: rm -r ECS165 ; mkdir ECS165 ; python3 exam_tester_m2_part1.py ; python3 exam_tester_m2_part2.py
