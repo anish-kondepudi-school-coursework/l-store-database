@@ -1,6 +1,7 @@
 import unittest
 from unittest import mock
 from lstore import PageRange, Table
+import copy
 
 
 class TestTable(unittest.TestCase):
@@ -63,6 +64,28 @@ class TestTable(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             table.index.get_rid(record[self.primary_key_col])
+
+    def test_brute_force_search(self) -> None:
+        table: Table = Table("table1", 5, self.primary_key_col)
+        RECORD_VALUE = 8
+        records: list[list[int]] = [
+            [1, 2, 3, 4, 1],
+            [4, 1, 2, 2, 32],
+            [2, 6, 5, 1, 1],
+            [3, 2, RECORD_VALUE, 3, 1],
+            [5, 6, RECORD_VALUE, 9, 43],
+            [7, 4, RECORD_VALUE, 9, 4],
+            [8, 1, RECORD_VALUE, 9, 3],
+            [6, 9, RECORD_VALUE, 9, 13],
+        ]
+        for record in records:
+            table.insert_record(record)
+        # retrieving the data that is stored in the secondary index
+        expected_rids = table.secondary_indices[2].search_record(RECORD_VALUE)
+        # setting the secondary index to None, and using brute force search
+        table.secondary_indices[2] = None
+        brute_search_indices = table.brute_force_search(RECORD_VALUE, 2)
+        self.assertEqual(expected_rids, brute_search_indices)
 
     def test_update_non_existing_record(self) -> None:
         table: Table = Table("table1", 2, self.primary_key_col)

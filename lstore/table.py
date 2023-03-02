@@ -104,6 +104,22 @@ class Table:
             return True
         return False
 
+    def brute_force_search(self, search_key: int, search_key_index: int) -> list:
+        """
+        #: brute force search for all records with given key
+        #: uses the keys within the primary key indexing structure
+        """
+        recordRids: List[int] = self.index.key_to_rid.values()
+        matching_rids = []
+        for rid in recordRids:
+            page_range: PageRange = self.__find_page_range_with_rid(rid)
+            attribute_value: int = page_range.get_latest_column_value(
+                rid, search_key_index
+            )
+            if attribute_value == search_key:
+                matching_rids.append(rid)
+        return matching_rids
+
     def update_secondary_indices_serially(self, columns: list[int], rid: int) -> None:
         for i, attribute in enumerate(columns):
             if (

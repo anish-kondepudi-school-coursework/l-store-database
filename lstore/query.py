@@ -77,17 +77,16 @@ class Query:
         if search_key_index == self.table.primary_key_col:
             ridList: List[int] = [
                 self.table.index.get_rid(search_key)
-                if relative_version == 0
-                else self.table.get_versioned_rid(
-                    self.table.index.get_rid(search_key), abs(relative_version)
-                )
             ]
         elif self.table.secondary_indices[search_key_index] != None:
             ridList: List[int] = self.table.secondary_indices[
                 search_key_index
             ].search_record(search_key)
         else:  # need to implement brute force
-            ridList = [69]
+            ridList = self.table.brute_force_search(search_key, search_key_index)
+        if relative_version != 0:
+            for i, rid in enumerate(ridList):
+                ridList[i] = self.table.get_versioned_rid(rid, abs(relative_version))
         attribute_values = self.table.get_latest_column_values(
             ridList, projected_columns_index
         )

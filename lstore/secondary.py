@@ -2,6 +2,7 @@ import multiprocessing as mp
 import os
 import pickle
 from typing import Dict, List
+from enum import Enum
 
 # will offer the option to run in a parallel process, which will return an endpoint to request server
 # or to run in the same process, and will just return itself. include B+ tree and dictionary implmenetation

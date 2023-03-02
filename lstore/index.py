@@ -2,13 +2,13 @@
 A data structure holding indices for various columns of a table. Key column should be indexd by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
 """
 import lstore.table as Table
-
+from typing import Dict
 
 class Index:
     def __init__(self, table: Table):
         # One index for each table. All our empty initially.
         self.indices: list = [None] * table.num_columns
-        self.key_to_rid = dict()
+        self.key_to_rid: Dict[int: int] = dict()
 
     def add_key_rid(self, key: int, rid: int) -> None:
         assert key not in self.key_to_rid
