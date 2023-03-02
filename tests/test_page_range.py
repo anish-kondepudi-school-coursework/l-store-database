@@ -26,9 +26,7 @@ class TestCumulativePageRange(unittest.TestCase):
         self.bufferpool.disk.page_exists.return_value = False
         self.rid_generator: RID_Generator = RID_Generator()
         self.page_directory: PageDirectory = PageDirectory()
-        self.max_base_page_records_per_page_range: int = (
-            MAX_BASE_PAGES_IN_PAGE_RANGE * (PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE)
-        )
+        self.max_base_page_records_per_page_range: int = MAX_BASE_PAGES_IN_PAGE_RANGE * (PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE)
 
     @classmethod
     def tearDownClass(self):
@@ -38,9 +36,7 @@ class TestCumulativePageRange(unittest.TestCase):
 
     def test_invalidate_record(self):
         page_dir: PageDirectory = PageDirectory()
-        page_range: PageRange = PageRange(
-            self.num_cols, page_dir, self.rid_generator, self.table_name, self.bufferpool, True
-        )
+        page_range: PageRange = PageRange(self.num_cols, page_dir, self.rid_generator, self.table_name, self.bufferpool, True)
         record = [1, 2, 3]
         base_rid = page_range.insert_record(record)
         record_update1 = [None, 4, None]
@@ -56,36 +52,26 @@ class TestCumulativePageRange(unittest.TestCase):
         base_indir_value = base_page.get_column_of_record(INDIRECTION_COLUMN, base_slot_num)
 
         slot_num_tail1 = self.rid_generator.get_slot_num(tail_rid1)
-        tail1_indir_value = tail_page.get_column_of_record(
-            INDIRECTION_COLUMN, slot_num_tail1
-        )
+        tail1_indir_value = tail_page.get_column_of_record(INDIRECTION_COLUMN, slot_num_tail1)
         slot_num_tail2 = self.rid_generator.get_slot_num(tail_rid2)
-        tail2_indir_value = tail_page.get_column_of_record(
-            INDIRECTION_COLUMN, slot_num_tail2
-        )
+        tail2_indir_value = tail_page.get_column_of_record(INDIRECTION_COLUMN, slot_num_tail2)
         self.assertEqual(base_indir_value, LOGICAL_DELETE)
         self.assertEqual(tail1_indir_value, LOGICAL_DELETE)
         self.assertEqual(tail2_indir_value, LOGICAL_DELETE)
 
     def test_is_full(self) -> None:
-        page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
-        )
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True)
         for _ in range(self.max_base_page_records_per_page_range):
             self.assertFalse(page_range.is_full())
             page_range.insert_record([9, 4, 14])
         self.assertTrue(page_range.is_full())
 
     def test_insert_column(self) -> None:
-        page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
-        )
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True)
 
         records_to_verify: list = []
         for _ in range(self.max_base_page_records_per_page_range):
-            random_record = [
-                random.getrandbits(ATTRIBUTE_SIZE) for _ in range(self.num_cols)
-            ]
+            random_record = [random.getrandbits(ATTRIBUTE_SIZE) for _ in range(self.num_cols)]
             rid = page_range.insert_record(random_record)
             self.__verify_record_retrieval(page_range, rid, random_record + [0, rid])
             records_to_verify.append((rid, random_record))
@@ -94,13 +80,9 @@ class TestCumulativePageRange(unittest.TestCase):
             self.__verify_record_retrieval(page_range, rid, expected_record + [0, rid])
 
     def test_insert_column_when_page_range_full(self) -> None:
-        page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
-        )
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True)
         for _ in range(self.max_base_page_records_per_page_range):
-            random_record = [
-                random.getrandbits(ATTRIBUTE_SIZE) for _ in range(self.num_cols)
-            ]
+            random_record = [random.getrandbits(ATTRIBUTE_SIZE) for _ in range(self.num_cols)]
             rid = page_range.insert_record(random_record)
             self.assertNotEqual(
                 first=rid,
@@ -116,16 +98,12 @@ class TestCumulativePageRange(unittest.TestCase):
         )
 
     def test_get_latest_column_value_after_insert(self) -> None:
-        page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
-        )
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True)
         base_rid = page_range.insert_record([1, 2, 3])
         self.__verify_record_retrieval(page_range, base_rid, [1, 2, 3, 0b000, base_rid])
 
     def test_get_latest_column_value_after_update(self) -> None:
-        page_range: PageRange = PageRange(
-            self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True
-        )
+        page_range: PageRange = PageRange(self.num_cols, self.page_directory, self.rid_generator, self.table_name, self.bufferpool, True)
         base_rid = page_range.insert_record([1, 2, 3])
         page_range.update_record(base_rid, [None, 5, None])
         self.__verify_record_retrieval(page_range, base_rid, [1, 5, 3, 0b010, base_rid])
@@ -205,18 +183,14 @@ class TestCumulativePageRange(unittest.TestCase):
     #             Found {len(page_range.tail_pages)} tail page(s)",
     #     )
 
-    def __verify_tail_chain(
-        self, page_range: PageRange, base_rid: int, expected_tail_chain: list
-    ) -> None:
+    def __verify_tail_chain(self, page_range: PageRange, base_rid: int, expected_tail_chain: list) -> None:
         actual_tail_chain = page_range._get_tail_chain(base_rid)
         self.assertEqual(
             first=len(actual_tail_chain),
             second=len(expected_tail_chain),
             msg=f"Tail chain lengths differ. Expected: {len(expected_tail_chain)} Received: {actual_tail_chain}",
         )
-        for (actual_rid, actual_record), (expected_rid, expected_record) in zip(
-            actual_tail_chain, expected_tail_chain
-        ):
+        for (actual_rid, actual_record), (expected_rid, expected_record) in zip(actual_tail_chain, expected_tail_chain):
             self.assertEqual(
                 first=actual_rid,
                 second=expected_rid,
@@ -228,9 +202,7 @@ class TestCumulativePageRange(unittest.TestCase):
                 msg=f"Record columns differ. Expected: {expected_record} Received: {actual_record}",
             )
 
-    def __verify_record_retrieval(
-        self, page_range: PageRange, rid: int, expected_record: list
-    ) -> None:
+    def __verify_record_retrieval(self, page_range: PageRange, rid: int, expected_record: list) -> None:
         for ind in range(self.num_cols):
             actual_col_val: int = page_range.get_latest_column_value(rid, ind)
             expected_col_val: int = expected_record[ind]

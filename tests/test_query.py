@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 from lstore import (
-    Bufferpool, 
+    Bufferpool,
     DiskInterface,
     Table,
     Query,

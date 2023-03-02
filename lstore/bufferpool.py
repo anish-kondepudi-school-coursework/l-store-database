@@ -3,17 +3,17 @@ from .disk import DiskInterface
 from copy import deepcopy
 import os
 
-class Bufferpool:
 
+class Bufferpool:
     def __init__(self, max_buffer_pool_size: int, path: str) -> None:
         self.max_buffer_pool_size: int = max_buffer_pool_size
-        self.physical_pages: dict[str,PhysicalPage] = dict()
+        self.physical_pages: dict[str, PhysicalPage] = dict()
         self.disk: DiskInterface = DiskInterface(path)
         if path != "":
             os.makedirs(path, exist_ok=True)
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
-        if (page_id in self.physical_pages):
+        if page_id in self.physical_pages:
             physical_page = self.physical_pages[page_id]
         elif self.disk.page_exists(page_id):
             self.__evict_page_if_bufferpool_full()
@@ -31,8 +31,7 @@ class Bufferpool:
         return True
 
     def copy_page(self, source_page_id: str, dest_page_id: str) -> bool:
-        if (dest_page_id in self.physical_pages or
-            self.disk.page_exists(dest_page_id)):
+        if dest_page_id in self.physical_pages or self.disk.page_exists(dest_page_id):
             return False
         self.__evict_page_if_bufferpool_full()
         source_page = self.get_page(source_page_id)
@@ -68,13 +67,7 @@ class Bufferpool:
         if len(self.physical_pages) == 0:
             return
 
-        physical_pages_and_page_ids: list[tuple[PhysicalPage,str]] = \
-            sorted([(phys_page, page_id) for page_id, phys_page in list(self.physical_pages.items())],
-                   key=lambda x: x[0].get_timestamp())
-        # physical_pages_and_page_ids: list[tuple[PhysicalPage,str]] = \
-        #     sorted([(phys_page, page_id) for page_id, phys_page in list(self.physical_pages.items())],
-        #            key=lambda x: x[0].get_timestamp(),
-        #            reverse=True)
+        physical_pages_and_page_ids: list[tuple[PhysicalPage, str]] = sorted([(phys_page, page_id) for page_id, phys_page in list(self.physical_pages.items())], key=lambda x: x[0].get_timestamp())
 
         bufferpool_page_index: int = 0
         while True:
@@ -83,13 +76,13 @@ class Bufferpool:
 
             if not physical_page.can_evict():
                 continue
-        
+
             if physical_page.is_dirty():
                 self.disk.write_page(page_id, physical_page)
-            
+
             if not page_id in self.physical_pages:
                 continue
-            
+
             del self.physical_pages[page_id]
-            
+
             break

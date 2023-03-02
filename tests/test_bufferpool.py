@@ -6,6 +6,7 @@ from lstore import (
     Bufferpool,
 )
 
+
 class TestBufferpool(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -37,7 +38,7 @@ class TestBufferpool(unittest.TestCase):
         self.assertEqual(physical_page.get_column_value(self.slot_num), 832)
         self.assertEqual(physical_page.is_dirty(), True)
         self.assertEqual(physical_page.can_evict(), True)
-    
+
     # def test_insert_page_when_inserting_duplicate_page_in_memory(self) -> None:
     #     bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
     #     disk_interface: mock.MagicMock = mock.Mock()
@@ -89,7 +90,7 @@ class TestBufferpool(unittest.TestCase):
 
     #     self.__verify_physical_page_equality(physical_pages["page_id_2"], physical_page2)
     #     self.__verify_physical_page_equality(physical_pages["page_id_3"], physical_page3)
-    
+
     def test_copy_page_when_bufferpool_not_full(self) -> None:
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
@@ -99,7 +100,7 @@ class TestBufferpool(unittest.TestCase):
         source_phys_page = PhysicalPage()
         source_page_id = "1"
         for i in range(PhysicalPage.max_number_of_records):
-            source_phys_page.insert_value(i+1, i)
+            source_phys_page.insert_value(i + 1, i)
         bufferpool.physical_pages[source_page_id] = source_phys_page
 
         dest_page_id = "2"
@@ -110,7 +111,7 @@ class TestBufferpool(unittest.TestCase):
             source_page_val = source_phys_page.get_column_value(i)
             dest_page_val = dest_phys_page.get_column_value(i)
             self.assertEqual(source_page_val, dest_page_val)
-    
+
     def test_copy_page_when_bufferpool_full(self) -> None:
         bufferpool: Bufferpool = Bufferpool(self.max_bufferpool_pages, self.path)
         disk_interface: mock.MagicMock = mock.Mock()
@@ -209,7 +210,7 @@ class TestBufferpool(unittest.TestCase):
         bufferpool._evict_page()
         disk_interface.write_page.assert_called_with("page_id_1", physical_page1)
 
-        physical_pages: dict[str,PhysicalPage] = bufferpool.physical_pages
+        physical_pages: dict[str, PhysicalPage] = bufferpool.physical_pages
         self.assertEqual(len(physical_pages), 1)
         self.__verify_physical_page_equality(physical_pages["page_id_2"], physical_page2)
 
@@ -217,6 +218,7 @@ class TestBufferpool(unittest.TestCase):
         self.assertEqual(physical_page1.get_data(), physical_page2.get_data())
         self.assertEqual(physical_page1.is_dirty(), physical_page2.is_dirty())
         self.assertEqual(physical_page1.can_evict(), physical_page2.can_evict())
+
 
 if __name__ == "__main__":
     unittest.main()

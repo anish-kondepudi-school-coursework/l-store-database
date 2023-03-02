@@ -4,8 +4,8 @@ from lstore.config import MAX_BUFFERPOOL_SIZE
 import _pickle as pickle
 import os
 
-class Database:
 
+class Database:
     database_file_name: str = "database.db"
 
     def __init__(self):
@@ -17,8 +17,8 @@ class Database:
     def open(self, path):
         self.path = path
         self.bufferpool = Bufferpool(MAX_BUFFERPOOL_SIZE, path)
-        if self.file_exists(Database.database_file_name):
-            self.table_name_to_table = self.load_data_from_disk(Database.database_file_name)
+        if self.__file_exists(Database.database_file_name):
+            self.table_name_to_table = self.__load_data_from_disk(Database.database_file_name)
             for name in self.table_name_to_table:
                 self.table_name_to_table[name].prepare_unpickle()
 
@@ -26,7 +26,7 @@ class Database:
         self.bufferpool.evict_all_pages()
         for name in self.table_name_to_table:
             self.table_name_to_table[name].prepare_to_be_pickled()
-        self.save_data_to_disk(Database.database_file_name, self.table_name_to_table)
+        self.__save_data_to_disk(Database.database_file_name, self.table_name_to_table)
 
     """
     # Creates a new table
@@ -58,13 +58,13 @@ class Database:
             return Table(name, 5, 0, self.bufferpool)
         return self.table_name_to_table.get(name)
 
-    def file_exists(self, filename: str) -> bool:
+    def __file_exists(self, filename: str) -> bool:
         return os.path.exists(f"{self.path}/{filename}")
 
-    def save_data_to_disk(self, filename: str, data) -> None:
+    def __save_data_to_disk(self, filename: str, data) -> None:
         with open(f"{self.path}/{filename}", "wb") as file:
             pickle.dump(data, file)
 
-    def load_data_from_disk(self, filename: str):
+    def __load_data_from_disk(self, filename: str):
         with open(f"{self.path}/{filename}", "rb") as file:
             return pickle.load(file)

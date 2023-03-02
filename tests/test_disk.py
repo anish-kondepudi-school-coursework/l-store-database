@@ -9,6 +9,7 @@ from lstore import (
 )
 import zlib
 
+
 class TestDiskInterface(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -43,14 +44,15 @@ class TestDiskInterface(unittest.TestCase):
     def test_get_page(self, mock_open) -> None:
         disk_interface = DiskInterface(self.path_of_file)
         data = bytearray(PHYSICAL_PAGE_SIZE)
-        data[0:5] = b'12345'
+        data[0:5] = b"12345"
         mock_file = BytesIO(zlib.compress(data))
         mock_open().__enter__ = MagicMock(return_value=mock_file)
-        page : PhysicalPage = disk_interface.get_page("file")
+        page: PhysicalPage = disk_interface.get_page("file")
 
         mock_file.seek(0)
         mock_open.assert_called_with(f"{self.path_of_file}/file", "rb")
         self.assertEqual(zlib.decompress(mock_file.read()), page.get_data())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -24,9 +24,7 @@ class TestPageDirectory(unittest.TestCase):
     def test_insert_page_when_page_not_previously_inserted(self) -> None:
         page_directory: PageDirectory = PageDirectory()
         try:
-            page_directory.insert_page(
-                self.base_rid, self.base_page
-            )
+            page_directory.insert_page(self.base_rid, self.base_page)
         except:
             self.fail("Exception raises on insert_page unexpectedly.")
 
@@ -42,7 +40,7 @@ class TestPageDirectory(unittest.TestCase):
 
     def test_get_page_when_no_pages_inserted(self) -> None:
         page_directory: PageDirectory = PageDirectory()
-        page : BasePage = page_directory.get_page(7)
+        page: BasePage = page_directory.get_page(7)
         self.assertEqual(
             page,
             None,
@@ -51,9 +49,7 @@ class TestPageDirectory(unittest.TestCase):
 
     def test_get_page_when_page_inserted(self) -> None:
         page_directory: PageDirectory = PageDirectory()
-        page_directory.insert_page(
-            self.base_rid, self.base_page
-        )
+        page_directory.insert_page(self.base_rid, self.base_page)
         page: BasePage = page_directory.get_page(self.base_rid)
         self.assertEqual(
             page,
@@ -68,16 +64,14 @@ class TestPageDirectory(unittest.TestCase):
 
     def test_delete_page_when_page_exists(self) -> None:
         page_directory: PageDirectory = PageDirectory()
-        page_directory.insert_page(
-            self.base_rid, self.base_page
-        )
+        page_directory.insert_page(self.base_rid, self.base_page)
         try:
             page_directory.delete_page(self.base_rid)
         except:
             self.fail("Exception raises on insert_page unexpectedly.")
         page: BasePage = page_directory.get_page(self.base_rid)
         self.assertEqual(
-            page, 
+            page,
             None,
             msg=f"Received valid page details. Expected: {(INVALID_RID, INVALID_SLOT_NUM)} Received: {page}",
         )

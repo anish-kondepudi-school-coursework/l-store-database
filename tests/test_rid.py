@@ -1,6 +1,7 @@
 import unittest
 from lstore import RID_Generator, PhysicalPage
 
+
 class TestRidGenerator(unittest.TestCase):
     def test_get_base_rids(self) -> None:
         PhysicalPage.max_number_of_records = 5
@@ -25,7 +26,7 @@ class TestRidGenerator(unittest.TestCase):
             self.assertEqual(rid_generator.base_rid_to_starting_rid(rid), 6)
         for rid in range(11, 16):
             self.assertEqual(rid_generator.base_rid_to_starting_rid(rid), 11)
-    
+
     def test_get_tail_rid_to_starting_rid(self) -> None:
         PhysicalPage.max_number_of_records = 5
         rid_generator = RID_Generator()
@@ -35,6 +36,7 @@ class TestRidGenerator(unittest.TestCase):
             self.assertEqual(rid_generator.tail_rid_to_starting_rid(rid), -6)
         for rid in range(-15, -10):
             self.assertEqual(rid_generator.tail_rid_to_starting_rid(rid), -11)
+
 
 if __name__ == "__main__":
     unittest.main()

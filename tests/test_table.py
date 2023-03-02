@@ -135,17 +135,17 @@ class TestTable(unittest.TestCase):
         bufferpool = self.create_bufferpool()
         table: Table = Table("table1", 3, self.primary_key_col, bufferpool)
         record: list[int] = [10, 20, 30]
-        inc:int = 0
+        inc: int = 0
         table.insert_record(record)
         rid: int = table.index.get_rid(record[self.primary_key_col])
         base_page = table.page_directory.get_page(rid)
         old_base_page = base_page
-        while(base_page.tps==0):
-            new_record: list[int] = [None, 20+inc, 30+inc]
+        while base_page.tps == 0:
+            new_record: list[int] = [None, 20 + inc, 30 + inc]
             table.update_record(record[self.primary_key_col], new_record)
             base_page = table.page_directory.get_page(rid)
-            inc+=1
-        print(table.get_latest_column_values(rid, [1,1,1]))
+            inc += 1
+        print(table.get_latest_column_values(rid, [1, 1, 1]))
         self.assertNotEqual(base_page, old_base_page)
         col_val = base_page.get_column_of_record(1, 0)
         self.assertNotEqual(record[1], col_val)

@@ -10,9 +10,7 @@ class PageDirectory:
     def get_page(self, rid: int) -> Tuple[LogicalPage | None, int]:
         return self.page_directory.get(rid)
 
-    def insert_page(
-        self, rid: int, base_page: BasePage
-    ) -> None:
+    def insert_page(self, rid: int, base_page: BasePage) -> None:
         self.page_directory[rid] = base_page
 
     def delete_page(self, rid: int) -> None:
@@ -21,4 +19,4 @@ class PageDirectory:
 
     def update_page(self, rid_list: dict()) -> None:
         for rid in rid_list:
-            self.page_directory[rid]=rid_list[rid]
+            self.page_directory[rid] = rid_list[rid]

@@ -18,6 +18,7 @@ from lstore import (
 )
 from abc import ABC
 
+
 class TestPhysPage(unittest.TestCase):
     def test_insert_value_for_valid_offsets(self) -> None:
         page: PhysicalPage = PhysicalPage()
@@ -31,7 +32,7 @@ class TestPhysPage(unittest.TestCase):
     def test_insert_value_for_INVALID_SLOT_NUMs(self) -> None:
         page: PhysicalPage = PhysicalPage()
         orig_time_stamp = page.get_timestamp()
-        
+
         for INVALID_SLOT_NUM in [-1, PhysicalPage.max_number_of_records]:
             success = page.insert_value(123, INVALID_SLOT_NUM)
             self.assertFalse(success)
@@ -50,7 +51,7 @@ class TestPhysPage(unittest.TestCase):
                 page.insert_value(value_to_insert, offset)
             self.assertFalse(page.is_dirty())
             self.assertEqual(orig_time_stamp, page.get_timestamp())
-        
+
     def test_get_column_value_for_valid_integers(self) -> None:
         page: PhysicalPage = PhysicalPage()
         orig_time_stamp = page.timestamp
@@ -75,6 +76,7 @@ class TestPhysPage(unittest.TestCase):
         self.assertFalse(page.can_evict())
         page.unpin_page()
         self.assertTrue(page.can_evict())
+
 
 class LogicalPageTests(ABC):
     @classmethod
@@ -117,7 +119,7 @@ class LogicalPageTests(ABC):
 
     def check_rid_is_valid(self, rid) -> None:
         self.assertNotEqual(rid, INVALID_RID)
-    
+
     def test_insert_record_into_full_page(self) -> None:
         page: LogicalPage = self.init_page()
         for _ in range(PhysicalPage.max_number_of_records):
@@ -125,14 +127,14 @@ class LogicalPageTests(ABC):
         rid, offset = page.insert_record(self.values_to_insert)
         self.assertEqual(rid, INVALID_RID)
         self.assertEqual(offset, INVALID_SLOT_NUM)
-    
+
     def test_is_full(self) -> None:
         page: LogicalPage = self.init_page()
         for _ in range(PhysicalPage.max_number_of_records):
             self.assertFalse(page.is_full())
             page.insert_record(self.values_to_insert)
         self.assertTrue(page.is_full())
-    
+
     def test_get_column(self):
         page: LogicalPage = self.init_page()
         _, offset = page.insert_record(self.values_to_insert)
@@ -144,7 +146,7 @@ class LogicalPageTests(ABC):
             given_col = page.get_column_of_record(ind, offset)
             exp_col = self.values_to_insert[ind]
             self.assertEqual(given_col, exp_col)
-    
+
     def test_get_column_invalid_index(self):
         page: LogicalPage = self.init_page()
         _, offset = page.insert_record(self.values_to_insert)
@@ -161,14 +163,15 @@ class LogicalPageTests(ABC):
         self.assertTrue(res)
         given_indir_val = page.bufferpool.get_page(page.page_ids[INDIRECTION_COLUMN]).get_column_value(slot_num)
         self.assertEqual(given_indir_val, new_indir_val)
-    
+
+
 class TestBasePage(LogicalPageTests, unittest.TestCase):
     def init_page(self) -> BasePage:
         return BasePage("", self.num_cols, self.bufferpool, self.rid_generator)
-    
+
     def test_update_record(self) -> None:
         page: BasePage = self.init_page()
-        new_cols = [i+1 for i in range(self.num_cols)]
+        new_cols = [i + 1 for i in range(self.num_cols)]
         _, slot_num = page.insert_record(self.values_to_insert)
         success = page.update_record(new_cols, slot_num)
         self.assertTrue(success)
@@ -199,19 +202,19 @@ class TestBasePage(LogicalPageTests, unittest.TestCase):
         page: BasePage = self.init_page()
         _, slot_num = page.insert_record(self.values_to_insert)
         copied_page: BasePage = get_copy_of_base_page(page)
-        new_cols = [i+1 for i in range(self.num_cols)]
+        new_cols = [i + 1 for i in range(self.num_cols)]
         copied_page.update_record(new_cols, slot_num)
-        ''' The original records data columns should not be changed '''
+        """ The original records data columns should not be changed """
         for ind in range(self.num_cols - NUM_METADATA_COLS):
             orig_page_col = page.bufferpool.get_page(page.page_ids[ind]).get_column_value(slot_num)
             copied_page_col = copied_page.bufferpool.get_page(copied_page.page_ids[ind]).get_column_value(slot_num)
             self.assertNotEqual(orig_page_col, copied_page_col)
-        ''' The original records metadata columns should be changed s'''
+        """ The original records metadata columns should be changed s"""
         for ind in range(self.num_cols - NUM_METADATA_COLS, self.num_cols):
             orig_page_col = page.bufferpool.get_page(page.page_ids[ind]).get_column_value(slot_num)
             copied_page_col = copied_page.bufferpool.get_page(copied_page.page_ids[ind]).get_column_value(slot_num)
             self.assertEqual(orig_page_col, copied_page_col)
-    
+
     def check_rid_is_valid(self, rid) -> None:
         self.assertGreaterEqual(rid, 1)
 
@@ -219,9 +222,10 @@ class TestBasePage(LogicalPageTests, unittest.TestCase):
 class TestTailPage(LogicalPageTests, unittest.TestCase):
     def init_page(self) -> TailPage:
         return TailPage("", self.num_cols, self.bufferpool, self.rid_generator)
-    
+
     def check_rid_is_valid(self, rid) -> None:
         self.assertLessEqual(rid, -1)
+
 
 if __name__ == "__main__":
     unittest.main()
@@ -234,7 +238,7 @@ if __name__ == "__main__":
     # print("Col: ", bp.get_column_of_record(2, 0))
     # print("Col: ", bp.get_column_of_record(3, 0))
     # print("Col: ", bp.get_column_of_record(4, 0))
-    
+
     # bp.update_indir_of_record(12, 0)
     # buff.evict_all_pages()
     # print("Col: ", bp.get_column_of_record(0, 0))
@@ -277,12 +281,12 @@ if __name__ == "__main__":
     # print("Col: ", bp.get_column_of_record(3, 511))
     # print("Col: ", bp.get_column_of_record(4, 511))
 
-    '''
+    """
         for tests of get copy:
             make sure that if the copied base page updates the indirection, then the original base page
             can see that update, but that if the copied base page updates a data column in the table,
             the original base page DOESN't see that change 
-    '''
+    """
 
-    #print(buff.get_page("asf_1_0").get_column_value(0))
-    #unittest.main()
+    # print(buff.get_page("asf_1_0").get_column_value(0))
+    # unittest.main()
