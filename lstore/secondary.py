@@ -1,13 +1,29 @@
 import multiprocessing as mp
 import os
 import pickle
-from typing import Dict, List
+from typing import Dict, List, Set
 from enum import Enum
+
 
 # will offer the option to run in a parallel process, which will return an endpoint to request server
 # or to run in the same process, and will just return itself. include B+ tree and dictionary implmenetation
+class DSAStructure(Enum):
+    B_TREE_ARRAY = 1
+    B_TREE_SET = 2
+    B_TREE_DICT = 3
+    DICTIONARY_ARRAY = 4
+    DICTIONARY_SET = 5
+    DICTIONARY_DICT = 6
+
+
 class SecondaryIndex:
-    def __init__(self, name: str, attribute: str, multiprocess: bool = False) -> None:
+    def __init__(
+        self,
+        name: str,
+        attribute: str,
+        structure: DSAStructure = DSAStructure.DICTIONARY_SET,
+        multiprocess: bool = False,
+    ) -> None:
         """
         `name`: name of the parent table
         `attribute`: identifying name of attribute, used when saving index in secondary memory
@@ -16,11 +32,24 @@ class SecondaryIndex:
         or initialized using the load_query method.
         """
         self.index_name = f"{name}_attr_{attribute}"
+        self.structure: DSAStructure = structure
         self.multiprocess = multiprocess
         self.seeds = []
         self.dictionary: Dict[int, List[int]] = {}
         self.load_query()
-
+    def initialize_structure(self):
+        if self.structure == DSAStructure.B_TREE_ARRAY:
+            pass
+        elif self.structure == DSAStructure.B_TREE_SET:
+            pass
+        elif self.structure == DSAStructure.B_TREE_DICT:
+            pass
+        elif self.structure == DSAStructure.DICTIONARY_ARRAY:
+            self.dictionary: Dict[int, List[int]] = {}
+        elif self.structure == DSAStructure.DICTIONARY_SET:
+            self.dictionary: Dict[int, Set[int]] = {}
+        elif self.structure == DSAStructure.DICTIONARY_DICT:
+            self.dictionary: Dict[int, Dict[int, int]] = {}
     def load_query(self, replace: bool = False):
         """
         `replace`: used to enforce the overwriting of `dictionary` and `seeds` when loading from secondary memory
@@ -47,6 +76,10 @@ class SecondaryIndex:
             pickle.dump(self.dictionary, f)
             pickle.dump(self.seeds, f)
 
+    """ Methods for adding, searching, and deleting records from the index
+    Use the Enum class DSAStructure to determine which implementation to use
+    """
+
     def add_record(self, key: int, rid: int):
         """
         `key`: the key to be added to the index
@@ -55,21 +88,12 @@ class SecondaryIndex:
         if self.multiprocess:
             self.add_record_mp(key, rid)
         else:
-            self.add_record_sp(key, rid)
+            if self.structure == DSAStructure.DICTIONARY_ARRAY:
+                self.add_record_dict_array(key, rid)
+            elif self.structure == DSAStructure.DICTIONARY_SET:
+                self.add_record_dict_set(key, rid)
 
-    def add_record_sp(self, key: int, rid: int):
-        """
-        `key`: the key to be added to the index
-        `rid`: the rid of the record that is being added to the index
-        #: note, potential edge case where the same key with the same rid is added twice
-        """
-        val = self.dictionary.setdefault(key, [rid])
-        if val != [rid]:
-            val.append(rid)
-        else:
-            self.seeds.append(key)
-
-    def search_record(self, key):
+    def search_record(self, key) -> List[int] | Set[int] | Dict[int, int]:
         """
         `key`: the key to be searched in the index
         #: returns the rid of the record that is being searched for in the index
@@ -77,21 +101,10 @@ class SecondaryIndex:
         if self.multiprocess:
             return self.search_record_mp(key)
         else:
-            return self.search_record_sp(key)
-
-    def search_record_mp(self, key):
-        """
-        `key`: the key to be searched in the index
-        #: returns the rid of the record that is being searched for in the index
-        """
-        pass
-
-    def search_record_sp(self, key):
-        """
-        `key`: the key to be searched in the index
-        #: returns the rid of the record that is being searched for in the index
-        """
-        return self.dictionary.get(key, [])
+            if self.structure == DSAStructure.DICTIONARY_ARRAY:
+                return self.search_record_dict_array(key)
+            elif self.structure == DSAStructure.DICTIONARY_SET:
+                return self.search_record_dict_set(key)
 
     def delete_record(self, key: int, rid: int):
         """
@@ -102,17 +115,65 @@ class SecondaryIndex:
         if self.multiprocess:
             self.delete_record_mp(key, rid)
         else:
-            self.delete_record_sp(key, rid)
+            if self.structure == DSAStructure.DICTIONARY_ARRAY:
+                self.delete_record_dict_array(key, rid)
+            elif self.structure == DSAStructure.DICTIONARY_SET:
+                self.delete_record_dict_set(key, rid)
 
-    def delete_record_mp(self, key: int, rid: int):
+    """ DSAStructure.DICTIONARY_ARRAY
+    Basic structure of having a dictionary for each secondary index, with the key being the attribute value
+    and the element being an array of the RIDs associated with it
+    """
+
+    def add_record_dict_array(self, key: int, rid: int):
+        """
+        `key`: the key to be added to the index
+        `rid`: the rid of the record that is being added to the index
+        #: note, potential edge case where the same key with the same rid is added twice
+        """
+        val: List[int] = self.dictionary.setdefault(key, [rid])
+        if val != [rid]:
+            val.append(rid)
+
+    def search_record_dict_array(self, key) -> List[int]:
+        """
+        `key`: the key to be searched in the index
+        #: returns the rid of the record that is being searched for in the index
+        """
+        return self.dictionary.get(key, [])
+
+    def delete_record_dict_array(self, key: int, rid: int):
         """
         `key`: the key to be deleted from the index
         `rid`: the rid of the record that is being deleted from the index
         #: note, potential edge case where the same key with the same rid is deleted twice
         """
-        pass
+        if key in self.dictionary:
+            vals: List[int] = self.dictionary[key]
+            vals.remove(rid)
 
-    def delete_record_sp(self, key: int, rid: int):
+    """ DSAStructure.DICTIONARY_SET
+    Basic structure of having a dictionary for each secondary index, with the key being the attribute value
+    and the element being a set of the RIDs associated with it
+    """
+
+    def add_record_dict_set(self, key: int, rid: int):
+        """
+        `key`: the key to be added to the index
+        `rid`: the rid of the record that is being added to the index
+        #: note, potential edge case where the same key with the same rid is added twice
+        """
+        val: Set[int] = self.dictionary.setdefault(key, set([rid]))
+        val.add(rid)
+
+    def search_record_dict_set(self, key) -> Set[int]:
+        """
+        `key`: the key to be searched in the index
+        #: returns the rid of the record that is being searched for in the index
+        """
+        return self.dictionary.get(key, set())
+
+    def delete_record_dict_set(self, key: int, rid: int):
         """
         `key`: the key to be deleted from the index
         `rid`: the rid of the record that is being deleted from the index
@@ -121,6 +182,31 @@ class SecondaryIndex:
         if key in self.dictionary:
             vals = self.dictionary[key]
             vals.remove(rid)
-            # if not self.dictionary[key]:
-            #     self.dictionary.pop(key)
-            #     self.seeds.remove(key)
+
+
+    """ Multiprocessing
+    Skeleton code for future implementation of multiprocessing in the secondary index
+    """
+
+    def add_record_mp(self, key: int, rid: int):
+        """
+        `key`: the key to be added to the index
+        `rid`: the rid of the record that is being added to the index
+        #: note, potential edge case where the same key with the same rid is added twice
+        """
+        pass
+
+    def search_record_mp(self, key):
+        """
+        `key`: the key to be searched in the index
+        #: returns the rid of the record that is being searched for in the index
+        """
+        pass
+
+    def delete_record_mp(self, key: int, rid: int):
+        """
+        `key`: the key to be deleted from the index
+        `rid`: the rid of the record that is being deleted from the index
+        #: note, potential edge case where the same key with the same rid is deleted twice
+        """
+        pass

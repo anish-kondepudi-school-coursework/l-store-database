@@ -1,7 +1,7 @@
 from lstore.table import Table, Record
 from lstore.index import Index
 from lstore.secondary import SecondaryIndex
-from typing import List
+from typing import List, Set, Dict
 
 
 class Query:
@@ -72,18 +72,19 @@ class Query:
         Returns False if record locked by TPL
         Assume that select will never be called on a key that doesn't exist
         """
-        columnsList: list = []
         recordList: list[Record] = []
         if search_key_index == self.table.primary_key_col:
-            ridList: List[int] = [
-                self.table.index.get_rid(search_key)
-            ]
+            ridList: List[int] = [self.table.index.get_rid(search_key)]
         elif self.table.secondary_indices[search_key_index] != None:
-            ridList: List[int] = self.table.secondary_indices[
-                search_key_index
-            ].search_record(search_key)
-        else:  # need to implement brute force
-            ridList = self.table.brute_force_search(search_key, search_key_index)
+            ridList: Dict[int, int] | List[int] | Set[
+                int
+            ] = self.table.secondary_indices[search_key_index].search_record(search_key)
+            if type(ridList) is dict:
+                ridList: List[int] = list(ridList.keys())
+        else:
+            ridList: List[int] = self.table.brute_force_search(
+                search_key, search_key_index
+            )
         if relative_version != 0:
             for i, rid in enumerate(ridList):
                 ridList[i] = self.table.get_versioned_rid(rid, abs(relative_version))

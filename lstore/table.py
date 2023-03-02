@@ -8,7 +8,7 @@ from .index import Index
 from .rid import RID_Generator
 from .page_range import PageRange
 from .page_directory import PageDirectory
-from .secondary import SecondaryIndex
+from .secondary import SecondaryIndex, DSAStructure
 from typing import List
 
 
@@ -31,6 +31,7 @@ class Table:
         primary_key_col: int,
         cumulative=True,
         mp=False,
+        secondary_structure: DSAStructure = DSAStructure.DICTIONARY_SET,
     ):
         """
         `name`: string         #Table name
@@ -49,7 +50,12 @@ class Table:
         self.mp = mp
         self.cumulative = cumulative
         self.secondary_indices: list[SecondaryIndex | None] = [
-            SecondaryIndex(self.name, f"attribute_{i}", False)
+            SecondaryIndex(
+                self.name,
+                f"attribute_{i}",
+                multiprocess=False,
+                structure=secondary_structure,
+            )
             if i != self.primary_key_col
             else None
             for i in range(self.num_columns)
@@ -104,7 +110,7 @@ class Table:
             return True
         return False
 
-    def brute_force_search(self, search_key: int, search_key_index: int) -> list:
+    def brute_force_search(self, search_key: int, search_key_index: int) -> List[int]:
         """
         #: brute force search for all records with given key
         #: uses the keys within the primary key indexing structure
