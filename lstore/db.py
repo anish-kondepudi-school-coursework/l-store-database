@@ -1,7 +1,7 @@
 from lstore.table import Table
 from lstore.bufferpool import Bufferpool
 from lstore.config import MAX_BUFFERPOOL_SIZE
-import pickle
+import _pickle as pickle
 import os
 
 class Database:
@@ -62,9 +62,9 @@ class Database:
         return os.path.exists(f"{self.path}/{filename}")
 
     def save_data_to_disk(self, filename: str, data) -> None:
-        with open(f"{self.path}/{filename}", "wb", pickle.HIGHEST_PROTOCOL) as file:
+        with open(f"{self.path}/{filename}", "wb") as file:
             pickle.dump(data, file)
 
     def load_data_from_disk(self, filename: str):
-        with open(f"{self.path}/{filename}", "rb", pickle.HIGHEST_PROTOCOL) as file:
+        with open(f"{self.path}/{filename}", "rb") as file:
             return pickle.load(file)
