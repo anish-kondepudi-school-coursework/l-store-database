@@ -49,8 +49,8 @@ class TestCumulativePageRange(unittest.TestCase):
         tail_rid2 = page_range.update_record(base_rid, record_update2)
         page_range.invalidate_record(base_rid)
 
-        base_page = page_dir.get_page(base_rid)
-        tail_page = page_dir.get_page(tail_rid1)
+        base_page = page_dir.get_page(self.rid_generator.base_rid_to_starting_rid(base_rid))
+        tail_page = page_dir.get_page(self.rid_generator.tail_rid_to_starting_rid(tail_rid1))
 
         base_slot_num = self.rid_generator.get_slot_num(base_rid)
         base_indir_value = base_page.get_column_of_record(INDIRECTION_COLUMN, base_slot_num)
