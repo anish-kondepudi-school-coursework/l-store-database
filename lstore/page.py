@@ -30,7 +30,6 @@ class LogicalPage(ABC):
         slot_num = self.available_chunks.pop() 
         for ind in range(self.num_cols):
             if columns[ind] != None:
-                #print(f"page insert record - inserting {columns[ind]} at col {ind} for {self.page_ids[ind]}")
                 self.bufferpool.insert_page(self.page_ids[ind], slot_num, columns[ind])
         new_rid = self.rids.pop()
         return new_rid, slot_num
@@ -38,9 +37,7 @@ class LogicalPage(ABC):
     def get_column_of_record(self, column_index: int, slot_num: int) -> int:
         assert self.__is_valid_column_index(column_index)
         page_id = self.page_ids[column_index]
-        #print(f"page get_column, getting for {column_index} and {page_id}")
         phys_page = self.bufferpool.get_page(page_id)
-        #print(f"page get_column, get col value: ", phys_page.get_column_value(slot_num))
         return phys_page.get_column_value(slot_num)
 
     def update_indir_of_record(self, new_value: int, slot_num: int) -> bool:
@@ -80,8 +77,6 @@ class BasePage(LogicalPage):
     ''' Must only be called by merge '''
     def update_record(self, columns: list, slot_num: int) -> None:
         for ind in range(self.num_cols - 2):
-            # phys_page = self.bufferpool.get_page(self.page_ids[ind])
-            # success = phys_page.insert_value(columns[ind], slot_num)
             success = self.bufferpool.insert_page(self.page_ids[ind], slot_num, columns[ind])
             if not success:
                 # todo: make atomic by reverting all previous inserts?
