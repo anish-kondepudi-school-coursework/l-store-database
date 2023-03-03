@@ -3,7 +3,7 @@ import os
 import pickle
 from typing import Dict, List, Set
 from enum import Enum
-
+from .seeding import SeedSet
 
 # will offer the option to run in a parallel process, which will return an endpoint to request server
 # or to run in the same process, and will just return itself. include B+ tree and dictionary implmenetation
@@ -14,6 +14,16 @@ class DSAStructure(Enum):
     DICTIONARY_ARRAY = 4
     DICTIONARY_SET = 5
     DICTIONARY_DICT = 6
+
+
+class IntegerRange:
+    """
+    Object that will be essentially be used for seeding
+    """
+
+    def __init__(self, start: int, end: int) -> None:
+        self.start: int = start
+        self.end: int = end
 
 
 class SecondaryIndex:
@@ -34,9 +44,11 @@ class SecondaryIndex:
         self.index_name = f"{name}_attr_{attribute}"
         self.structure: DSAStructure = structure
         self.multiprocess = multiprocess
-        self.seeds = []
+        self.seeds: SeedSet = SeedSet([])
+        # self.seeds = []
         self.dictionary: Dict[int, List[int]] = {}
-        self.load_query()
+        self.load_query(replace=True)
+
     def initialize_structure(self):
         if self.structure == DSAStructure.B_TREE_ARRAY:
             pass
@@ -50,6 +62,7 @@ class SecondaryIndex:
             self.dictionary: Dict[int, Set[int]] = {}
         elif self.structure == DSAStructure.DICTIONARY_DICT:
             self.dictionary: Dict[int, Dict[int, int]] = {}
+
     def load_query(self, replace: bool = False):
         """
         `replace`: used to enforce the overwriting of `dictionary` and `seeds` when loading from secondary memory
@@ -61,7 +74,7 @@ class SecondaryIndex:
                 self.dictionary = pickle.load(f)
                 self.seeds = pickle.load(f)
         elif replace or (not self.dictionary and not self.seeds):
-            self.dictionary, self.seeds = {}, []
+            self.dictionary, self.seeds = {}, SeedSet([])
         else:
             raise Exception(
                 "Indices already exist but a file for them doesn't, and parameter did not specify overwriting existing member varaibles"
@@ -133,6 +146,7 @@ class SecondaryIndex:
         """
         val: List[int] = self.dictionary.setdefault(key, [rid])
         if val != [rid]:
+            self.seeds.add(rid)
             val.append(rid)
 
     def search_record_dict_array(self, key) -> List[int]:
@@ -151,6 +165,7 @@ class SecondaryIndex:
         if key in self.dictionary:
             vals: List[int] = self.dictionary[key]
             vals.remove(rid)
+            self.seeds.remove(rid)
 
     """ DSAStructure.DICTIONARY_SET
     Basic structure of having a dictionary for each secondary index, with the key being the attribute value
@@ -165,6 +180,7 @@ class SecondaryIndex:
         """
         val: Set[int] = self.dictionary.setdefault(key, set([rid]))
         val.add(rid)
+        self.seeds.add(rid)
 
     def search_record_dict_set(self, key) -> Set[int]:
         """
@@ -180,9 +196,9 @@ class SecondaryIndex:
         #: note, potential edge case where the same key with the same rid is deleted twice
         """
         if key in self.dictionary:
-            vals = self.dictionary[key]
+            vals: Set[int] = self.dictionary[key]
             vals.remove(rid)
-
+            self.seeds.remove(rid)
 
     """ Multiprocessing
     Skeleton code for future implementation of multiprocessing in the secondary index
