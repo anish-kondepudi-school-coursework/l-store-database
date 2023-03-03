@@ -22,7 +22,7 @@ class SecondaryIndex:
         attribute: str,
         structure: DSAStructure = DSAStructure.DICTIONARY_SET,
         multiprocess: bool = False,
-        seed: bool = True
+        seed: bool = False,
     ) -> None:
         """
         `name`: name of the parent table
@@ -67,7 +67,9 @@ class SecondaryIndex:
                 self.dictionary = pickle.load(f)
                 self.seeds = pickle.load(f)
         elif replace or (not self.dictionary and not self.seeds):
-            self.dictionary, self.seeds = {}, False if self.seeds == False else SeedSet([])
+            self.dictionary, self.seeds = {}, False if self.seeds == False else SeedSet(
+                []
+            )
         else:
             raise Exception(
                 "Indices already exist but a file for them doesn't, and parameter did not specify overwriting existing member varaibles"
@@ -82,6 +84,7 @@ class SecondaryIndex:
             pickle.dump(self.dictionary, f)
             if self.seeds:
                 pickle.dump(self.seeds, f)
+
     """ Methods for adding, searching, and deleting records from the index
     Use the Enum class DSAStructure to determine which implementation to use
     """
@@ -139,7 +142,8 @@ class SecondaryIndex:
         """
         val: List[int] = self.dictionary.setdefault(key, [rid])
         if val != [rid]:
-            if self.seeds: self.seeds.add(rid)
+            if self.seeds:
+                self.seeds.add(rid)
             val.append(rid)
 
     def search_record_dict_array(self, key) -> List[int]:
@@ -158,7 +162,8 @@ class SecondaryIndex:
         if key in self.dictionary:
             vals: List[int] = self.dictionary[key]
             vals.remove(rid)
-            if self.seeds: self.seeds.remove(rid)
+            if self.seeds:
+                self.seeds.remove(rid)
 
     """ DSAStructure.DICTIONARY_SET
     Basic structure of having a dictionary for each secondary index, with the key being the attribute value
@@ -173,7 +178,8 @@ class SecondaryIndex:
         """
         val: Set[int] = self.dictionary.setdefault(key, set([rid]))
         val.add(rid)
-        if self.seeds: self.seeds.add(rid)
+        if self.seeds:
+            self.seeds.add(rid)
 
     def search_record_dict_set(self, key) -> Set[int]:
         """
@@ -191,7 +197,8 @@ class SecondaryIndex:
         if key in self.dictionary:
             vals: Set[int] = self.dictionary[key]
             vals.remove(rid)
-            if self.seeds: self.seeds.remove(rid)
+            if self.seeds:
+                self.seeds.remove(rid)
 
     """ Multiprocessing
     Skeleton code for future implementation of multiprocessing in the secondary index
