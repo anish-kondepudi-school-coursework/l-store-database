@@ -1,7 +1,6 @@
 import unittest
 from unittest import mock
 from lstore import PageRange, Table, DSAStructure
-import copy
 
 
 class TestTable(unittest.TestCase):

@@ -1,6 +1,4 @@
 from lstore.table import Table, Record
-from lstore.index import Index
-from lstore.secondary import SecondaryIndex
 from typing import List, Set, Dict
 
 

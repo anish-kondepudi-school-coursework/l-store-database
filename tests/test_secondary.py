@@ -1,6 +1,6 @@
 import unittest
 import os
-from lstore import SecondaryIndex, Table, Index, DSAStructure
+from lstore import SecondaryIndex, Table, DSAStructure
 import copy
 
 
