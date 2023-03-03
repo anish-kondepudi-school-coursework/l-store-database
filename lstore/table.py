@@ -99,6 +99,9 @@ class Table:
         self.merge_queue = None
         self.stop_merging = None
         self.merge_thread = None
+        for secondary in self.secondary_indices:
+            if secondary:
+                secondary.save_index()
 
     def delete_record(self, primary_key: int) -> None:
         """
