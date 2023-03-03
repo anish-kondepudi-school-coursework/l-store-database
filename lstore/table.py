@@ -3,13 +3,18 @@ from .config import (
     MAX_BASE_PAGES_IN_PAGE_RANGE,
     PHYSICAL_PAGE_SIZE,
     ATTRIBUTE_SIZE,
+    BASE_RID,
 )
 from .index import Index
 from .rid import RID_Generator
+from .page import get_copy_of_base_page
 from .page_range import PageRange
 from .page_directory import PageDirectory
 from .secondary import SecondaryIndex, DSAStructure
 from typing import List
+import queue
+import threading
+from .bufferpool import Bufferpool
 
 
 class Record:
@@ -20,18 +25,17 @@ class Record:
 
 
 class Table:
-    num_records_in_page_range = (
-        MAX_BASE_PAGES_IN_PAGE_RANGE * PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
-    )
+    num_records_in_page_range = MAX_BASE_PAGES_IN_PAGE_RANGE * PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
 
     def __init__(
         self,
         name: str,
         num_columns: int,
         primary_key_col: int,
+        bufferpool: Bufferpool,
         cumulative=True,
         mp=False,
-        secondary_structure: DSAStructure = DSAStructure.DICTIONARY_SET,
+        secondary_structure: DSAStructure = DSAStructure.DICTIONARY_SET
     ):
         """
         `name`: string         #Table name
@@ -41,9 +45,11 @@ class Table:
         #: note, this will initialize the table with a single page range and all attributes
         with a secondary indices initially
         """
+    # def __init__(self, name: str, num_columns: int, primary_key_col: int, bufferpool: Bufferpool, cumulative=True):
         self.name: str = name
         self.primary_key_col: int = primary_key_col
         self.num_columns: int = num_columns
+        self.bufferpool = bufferpool
         self.index: Index = Index(self)
         self.page_directory: PageDirectory = PageDirectory()
         self.rid_generator: RID_Generator = RID_Generator()
@@ -62,9 +68,37 @@ class Table:
         ]
         self.page_ranges: list[PageRange] = [
             PageRange(
-                self.num_columns, self.page_directory, self.rid_generator, cumulative
+                self.num_columns, self.page_directory, self.rid_generator, self.name, self.bufferpool, cumulative
             )
         ]
+        self.page_ranges: list[PageRange] = [PageRange(self.num_columns, self.page_directory, self.rid_generator, self.name, self.bufferpool, cumulative)]
+        self.continue_merge = True
+        self.finished_merge = False
+        self.merge_queue = queue.Queue()
+        self.merge_thread = threading.Thread(target=self.__merge)
+        self.merge_thread.daemon = True
+        self.merge_thread.start()
+
+    def prepare_unpickle(self):
+        self.continue_merge = True
+        self.finished_merge = False
+        self.merge_queue = queue.Queue()
+        self.merge_thread = threading.Thread(target=self.__merge)
+        self.merge_thread.daemon = True
+        self.merge_thread.start()
+
+    def prepare_to_be_pickled(self):
+        for page_range in self.page_ranges:
+            page_range.full_tail_pages.append(page_range.tail_pages[-1])
+            self.merge_queue.put((page_range.full_tail_pages.copy(), page_range.updated_base_pages.copy(), page_range.prev_tid))
+            page_range.full_tail_pages.clear
+            page_range.updated_base_pages.clear
+        self.continue_merge = False
+        while not self.finished_merge:
+            pass
+        self.merge_queue = None
+        self.stop_merging = None
+        self.merge_thread = None
 
     def delete_record(self, primary_key: int) -> None:
         """
@@ -95,6 +129,8 @@ class Table:
                 self.num_columns,
                 self.page_directory,
                 self.rid_generator,
+                self.name,
+                self.bufferpool,
                 self.cumulative,
             )
             rid_from_insertion: int = new_page_range.insert_record(columns)
@@ -142,6 +178,11 @@ class Table:
         #: has to update the values in both primary and secondary indices
         #: updates can only be performed on records by primary key
         """
+        # One TA stated that database should not allow updates to primary key, another said we should, uncomment code below to disable PK updates
+        """
+        if(columns[self.primary_key_col]!=primary_key and columns[self.primary_key_col]!=None):
+            return False
+        """
         rid: int = self.index.get_rid(primary_key)
         page_range_with_record: PageRange = self.__find_page_range_with_rid(rid)
         self.index.delete_key(primary_key)
@@ -149,12 +190,18 @@ class Table:
         if columns[self.primary_key_col] != None:
             newPrimaryKey = columns[self.primary_key_col]
         self.index.add_key_rid(newPrimaryKey, rid)
-        new_rid, diff_list = page_range_with_record.update_record(rid, columns)
+        tid, diff_list = page_range_with_record.update_record(rid, columns)
+        result = tid != INVALID_RID
         for i, (old_attribute, new_attribute) in enumerate(zip(diff_list, columns)):
             if old_attribute != None and self.secondary_indices[i] != None:
                 self.secondary_indices[i].delete_record(old_attribute, rid)
                 self.secondary_indices[i].add_record(new_attribute, rid)
-        return new_rid != INVALID_RID
+        if result and page_range_with_record.full_tail_pages.__len__() == 3:
+            self.merge_queue.put((page_range_with_record.full_tail_pages.copy(), page_range_with_record.updated_base_pages.copy(), page_range_with_record.prev_tid))
+            page_range_with_record.full_tail_pages.clear
+            page_range_with_record.updated_base_pages.clear
+        page_range_with_record.prev_tid = tid
+        return result
 
     def get_latest_column_values(
         self, ridList: int | List[int], projected_columns_index: list
@@ -197,5 +244,45 @@ class Table:
         return rid
 
     def __merge(self):
-        print("merge is happening")
-        pass
+        tail_page_set: list
+        updated_base_page_list: list
+        latest_tid: int
+        updated_rid = dict()
+        original_base_pages = dict()
+        copied_base_pages = dict()
+        record_per_page = self.num_records_in_page_range // MAX_BASE_PAGES_IN_PAGE_RANGE
+        while self.continue_merge or not self.merge_queue.empty():
+            updated_rid.clear
+            original_base_pages.clear
+            copied_base_pages.clear
+            tail_page_set, updated_base_page_list, latest_tid = self.merge_queue.get(True)
+            for base_page in updated_base_page_list:
+                copied_base_page = get_copy_of_base_page(base_page)
+                assert copied_base_page != base_page
+                original_base_pages[int(copied_base_page.get_starting_rid() / record_per_page)] = base_page
+                copied_base_pages[int(copied_base_page.get_starting_rid() / record_per_page)] = copied_base_page
+            last_tid = latest_tid
+            tail_page_set.reverse()
+            for tail_page in tail_page_set:
+                starting_tid = tail_page.get_starting_rid()
+                for tid in range(last_tid, starting_tid, 1):
+                    # For a given tid, find which base rid it updated using the base_rid column/page
+                    base_rid = tail_page.get_column_of_record(BASE_RID, self.rid_generator.get_slot_num(tid))
+                    # Since we check tid from recent to least recent, if a record was updated already, it has latest values
+                    if base_rid not in updated_rid:
+                        record: list = []
+                        for index in range(self.num_columns):
+                            record.append(0)
+                            record[index] = tail_page.get_column_of_record(index, self.rid_generator.get_slot_num(base_rid))
+                        copied_base_pages[int(base_rid / record_per_page)].update_record(record, self.rid_generator.get_slot_num(base_rid))
+                        updated_rid[base_rid] = copied_base_pages[int(base_rid / record_per_page)]
+                last_tid = starting_tid + 1
+            # Could add a lock for the page we are updating, loop on updated rids update mapping to value
+            for base_page_index in copied_base_pages:
+                copied_base_pages[base_page_index].tps = latest_tid
+                # self.page_directory.update_page(updated_rid)
+                # old_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
+                self.page_directory.insert_page(copied_base_pages[base_page_index].get_starting_rid(), copied_base_pages[base_page_index])
+                # new_base_page = self.page_directory.get_page(copied_base_pages[base_page_index].get_starting_rid())
+                # assert(old_base_page != new_base_page)
+        self.finished_merge = True

@@ -82,8 +82,7 @@ class SecondaryIndex:
         """
         with open(self.index_name, "wb") as f:
             pickle.dump(self.dictionary, f)
-            if self.seeds:
-                pickle.dump(self.seeds, f)
+            pickle.dump(self.seeds, f)
 
     """ Methods for adding, searching, and deleting records from the index
     Use the Enum class DSAStructure to determine which implementation to use

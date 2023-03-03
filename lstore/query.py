@@ -141,9 +141,7 @@ class Query:
         # print
         for key in range(start_range, end_range + 1):
             try:
-                record = self.select_version(
-                    key, self.table.primary_key_col, column_index_list, relative_version
-                )
+                record = self.select_version(key, self.table.primary_key_col, column_index_list, relative_version)
                 aggregateSum += record[0].columns[0]
                 anyRecords = True
             except:

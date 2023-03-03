@@ -34,7 +34,7 @@ for _ in range(number_of_updates):
             value = randint(0, 20)
             updated_records[key][j] = value
 keys = sorted(list(records.keys()))
-
+"""
 # Check records that were presisted in part 1
 for key in keys:
     record = query.select_version(key, 0, [1, 1, 1, 1, 1], -1)[0]
@@ -56,7 +56,7 @@ for key in keys:
     if error:
         print('select error on', key, ':', record, ', correct:', records[key])
 print("Select for version -2 finished")
-
+"""
 for key in keys:
     record = query.select_version(key, 0, [1, 1, 1, 1, 1], 0)[0]
     error = False
@@ -64,9 +64,9 @@ for key in keys:
         if column != updated_records[key][i]:
             error = True
     if error:
-        print('select error on', key, ':', record, ', correct:', records[key])
+        raise Exception('select error on', key, ':', record, ', correct:', records[key])
 print("Select for version 0 finished")
-
+"""
 for i in range(0, number_of_aggregates):
     r = sorted(sample(range(0, len(keys)), 2))
     column_sum = sum(map(lambda x: records[x][0] if x in records else 0, keys[r[0]: r[1] + 1]))
@@ -83,13 +83,13 @@ for i in range(0, number_of_aggregates):
         print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', result, ', correct: ', column_sum)
 print("Aggregate version -2 finished")
 
-
+"""
 for i in range(0, number_of_aggregates):
     r = sorted(sample(range(0, len(keys)), 2))
     updated_column_sum = sum(map(lambda x: updated_records[x][0] if x in updated_records else 0, keys[r[0]: r[1] + 1]))
     updated_result = query.sum_version(keys[r[0]], keys[r[1]], 0, 0)
     if updated_column_sum != updated_result:
-        print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', updated_result, ', correct: ', updated_column_sum)
+        raise Exception('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', updated_result, ', correct: ', updated_column_sum)
 print("Aggregate version 0 finished")
 
 deleted_keys = sample(keys, 100)

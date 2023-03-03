@@ -1,11 +1,15 @@
 import unittest
-from lstore import Index, Table
+from unittest import mock
+from lstore import Bufferpool, DiskInterface, Index, Table
 
 
 class TestIndex(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.table: Table = Table("table1", 3, 0)
+        bufferpool = Bufferpool(1000, "")
+        bufferpool.disk: DiskInterface = mock.Mock()
+        bufferpool.disk.page_exists.return_value = False
+        self.table: Table = Table("table1", 3, 0, bufferpool)
 
     @classmethod
     def tearDownClass(self):

@@ -1,6 +1,7 @@
 import unittest
+from unittest import mock
 import os
-from lstore import Table, SeedSet
+from lstore import Table, SeedSet, Bufferpool, DiskInterface
 import copy
 import numpy as np
 import random
@@ -9,7 +10,10 @@ import random
 class TestSeed(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.table: Table = Table("table1", 5, 0)
+        bufferpool = Bufferpool(1000, "")
+        bufferpool.disk: DiskInterface = mock.Mock()
+        bufferpool.disk.page_exists.return_value = False
+        self.table: Table = Table("table1", 5, 0, bufferpool)
 
     @classmethod
     def tearDownClass(self):

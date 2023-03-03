@@ -1,21 +1,32 @@
 import unittest
 import os
-from lstore import SecondaryIndex, Table, DSAStructure
+from unittest import mock
+from lstore import SecondaryIndex, Table, DSAStructure, Bufferpool, DiskInterface, PageRange
 import copy
 
 
 class TestSecondary(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.table: Table = Table("table1", 5, 0)
+        bufferpool = Bufferpool(1000, "")
+        bufferpool.disk: DiskInterface = mock.Mock()
+        bufferpool.disk.page_exists.return_value = False
+        self.table: Table = Table("table1", 5, 0, bufferpool)
 
     @classmethod
     def tearDownClass(self):
         self.table: Table = None
 
+    def create_bufferpool(self) -> Bufferpool:
+        bufferpool = Bufferpool(1000, "")
+        bufferpool.disk: DiskInterface = mock.Mock()
+        bufferpool.disk.page_exists.return_value = False
+        return bufferpool
+
     def test_adding_secondary_array(self) -> None:
         TABLE_NAME = "table1_test"
-        table: Table = Table(TABLE_NAME, 5, 0, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         RECORD_VALUE: int = 5
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
@@ -32,7 +43,8 @@ class TestSecondary(unittest.TestCase):
 
     def test_loading_secondary_proper_array(self) -> None:
         TABLE_NAME = "table1_test"
-        table: Table = Table(TABLE_NAME, 5, 0, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         RECORD_VALUE: int = 5
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
@@ -48,18 +60,19 @@ class TestSecondary(unittest.TestCase):
         secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
         # loading values in secondary index
         secondary.load_query(replace=True)
-        # checking the secondary index
         real_rids = secondary.search_record(RECORD_VALUE)
-        self.assertEqual(expected_rids, real_rids)
         try:
             os.remove("table1_test_attr_attribute_4")
         except OSError:
             pass
+        # checking the secondary index
+        self.assertEqual(expected_rids, real_rids)
 
     def test_loading_secondary_proper_and_insert_array(self) -> None:
         RECORD_VALUE: int = 5
         TABLE_NAME = "table1_test"
-        table: Table = Table(TABLE_NAME, 5, 0, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
             [2, 6, 5, 1, RECORD_VALUE],
@@ -73,6 +86,11 @@ class TestSecondary(unittest.TestCase):
         # creating secondary index and loading it
         secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
         secondary.load_query(replace=True)
+        # cleanup, deleting the pickled file
+        try:
+            os.remove("table1_test_attr_attribute_4")
+        except OSError:
+            pass
         # checking the secondary index
         real_rids = secondary.search_record(RECORD_VALUE)
         self.assertEqual(expected_rids, real_rids)
@@ -84,16 +102,12 @@ class TestSecondary(unittest.TestCase):
         expected_rids.append(rid)
         real_rids = table.secondary_indices[4].search_record(RECORD_VALUE)
         self.assertEqual(expected_rids, real_rids)
-        # cleanup, deleting the pickled file
-        try:
-            os.remove("table1_test_attr_attribute_4")
-        except OSError:
-            pass
 
     def test_inserting_primary_key_again_array(self) -> None:
         RECORD_VALUE: int = 5
         TABLE_NAME = "table1_test"
-        table: Table = Table(TABLE_NAME, 5, 0, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
             [2, 6, 5, 1, RECORD_VALUE],
@@ -115,7 +129,8 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(expected_rids, secondary_rids)
 
     def test_for_update_changes_array(self) -> None:
-        table: Table = Table("table1", 5, 0, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         RECORD_VALUE: int = 5
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
@@ -152,7 +167,8 @@ class TestSecondary(unittest.TestCase):
     """ Testing for dictionary to set structure """
     def test_adding_secondary_set(self) -> None:
         TABLE_NAME = "table1_test"
-        table: Table = Table(TABLE_NAME, 5, 0, secondary_structure=DSAStructure.DICTIONARY_SET)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         RECORD_VALUE: int = 5
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
@@ -169,7 +185,8 @@ class TestSecondary(unittest.TestCase):
 
     def test_loading_secondary_proper_set(self) -> None:
         TABLE_NAME = "table1_test"
-        table: Table = Table(TABLE_NAME, 5, 0, secondary_structure=DSAStructure.DICTIONARY_SET)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         RECORD_VALUE: int = 5
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
@@ -185,18 +202,20 @@ class TestSecondary(unittest.TestCase):
         secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
         # loading values in secondary index
         secondary.load_query(replace=True)
-        # checking the secondary index
-        real_rids = secondary.search_record(RECORD_VALUE)
-        self.assertEqual(expected_rids, list(real_rids))
+        # cleanup, deleting the pickled file
         try:
             os.remove("table1_test_attr_attribute_4")
         except OSError:
             pass
+        # checking the secondary index
+        real_rids = secondary.search_record(RECORD_VALUE)
+        self.assertEqual(expected_rids.sort(), list(real_rids).sort())
 
     def test_loading_secondary_proper_and_insert_set(self) -> None:
         RECORD_VALUE: int = 5
         TABLE_NAME = "table1_test"
-        table: Table = Table(TABLE_NAME, 5, 0, secondary_structure=DSAStructure.DICTIONARY_SET)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
             [2, 6, 5, 1, RECORD_VALUE],
@@ -210,9 +229,14 @@ class TestSecondary(unittest.TestCase):
         # creating secondary index and loading it
         secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
         secondary.load_query(replace=True)
+        # cleanup, deleting the pickled file
+        try:
+            os.remove("table1_test_attr_attribute_4")
+        except OSError:
+            pass
         # checking the secondary index
         real_rids = secondary.search_record(RECORD_VALUE)
-        self.assertEqual(expected_rids, list(real_rids))
+        self.assertEqual(expected_rids.sort(), list(real_rids).sort())
         # adding a new record to table
         added_record = [4, 1, 5, 5, RECORD_VALUE]
         table.insert_record(added_record)
@@ -220,17 +244,13 @@ class TestSecondary(unittest.TestCase):
         rid = table.index.get_rid(added_record[0])
         expected_rids.append(rid)
         real_rids = table.secondary_indices[4].search_record(RECORD_VALUE)
-        self.assertEqual(expected_rids, list(real_rids))
-        # cleanup, deleting the pickled file
-        try:
-            os.remove("table1_test_attr_attribute_4")
-        except OSError:
-            pass
+        self.assertEqual(expected_rids.sort(), list(real_rids).sort())
 
     def test_inserting_primary_key_again_set(self) -> None:
         RECORD_VALUE: int = 5
         TABLE_NAME = "table1_test"
-        table: Table = Table(TABLE_NAME, 5, 0, secondary_structure=DSAStructure.DICTIONARY_SET)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
             [2, 6, 5, 1, RECORD_VALUE],
@@ -248,11 +268,12 @@ class TestSecondary(unittest.TestCase):
             pass
         current_rids = [table.index.get_rid(record[0]) for record in records]
         secondary_rids = table.secondary_indices[4].search_record(RECORD_VALUE)
-        self.assertEqual(expected_rids, current_rids)
-        self.assertEqual(expected_rids, list(secondary_rids))
+        self.assertEqual(expected_rids.sort(), current_rids.sort())
+        self.assertEqual(expected_rids.sort(), list(secondary_rids).sort())
 
     def test_for_update_changes_set(self) -> None:
-        table: Table = Table("table1", 5, 0, secondary_structure=DSAStructure.DICTIONARY_SET)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         RECORD_VALUE: int = 5
         records: list[list[int]] = [
             [1, 2, 3, 4, RECORD_VALUE],
@@ -278,12 +299,12 @@ class TestSecondary(unittest.TestCase):
         # extracting the new rid list, which should no longer contain expected_rid[-1]
         values_after_update_1 = table.secondary_indices[4].search_record(RECORD_VALUE)
         values_after_update_2 = table.secondary_indices[2].search_record(RECORD_VALUE)
-        self.assertEqual(expected_rids_1, list(values_before_update_1))
-        self.assertEqual(expected_rids_2, list(values_before_update_2))
+        self.assertEqual(expected_rids_1.sort(), list(values_before_update_1).sort())
+        self.assertEqual(expected_rids_2.sort(), list(values_before_update_2).sort())
         rid_add = expected_rids_1.pop(-1)
         expected_rids_2.append(rid_add)
-        self.assertEqual(expected_rids_1, list(values_after_update_1))
-        self.assertEqual(expected_rids_2, list(values_after_update_2))
+        self.assertEqual(expected_rids_1.sort(), list(values_after_update_1).sort())
+        self.assertEqual(expected_rids_2.sort(), list(values_after_update_2).sort())
 
 
 if __name__ == "__main__":

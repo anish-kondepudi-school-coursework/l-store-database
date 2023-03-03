@@ -1,22 +1,31 @@
 import unittest
 from unittest import mock
 from lstore import (
-    PageRange,
+    Bufferpool,
+    DiskInterface,
     Table,
     Query,
 )
 
 
 class TestQuery(unittest.TestCase):
+    def create_bufferpool(self) -> Bufferpool:
+        bufferpool = Bufferpool(1000, "")
+        bufferpool.disk: DiskInterface = mock.Mock()
+        bufferpool.disk.page_exists.return_value = False
+        return bufferpool
+
     def test_insert_record_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record)
         query.table.index.get_rid(1)
 
     def test_insert_record_dup_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record)
@@ -24,7 +33,8 @@ class TestQuery(unittest.TestCase):
         assert not result
 
     def test_select_record_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record)
@@ -32,7 +42,8 @@ class TestQuery(unittest.TestCase):
         assert recordList[0].columns == record
 
     def test_select_secondary_records(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         # defining records for secondary query
         records: list[list[int]] = [
@@ -50,7 +61,8 @@ class TestQuery(unittest.TestCase):
             assert recordList[i].columns == records[i]
 
     def test_update_record_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record)
@@ -60,14 +72,16 @@ class TestQuery(unittest.TestCase):
         assert recordList[0].columns == [1, 3, 4, 5, 6]
 
     def test_update_record_does_not_exist_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         updateList: list[int] = [None, 3, 4, 5, 6]
         result: bool = query.update(1, *updateList)
         assert not result
 
     def test_aggregate_record_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record1: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record1)
@@ -81,7 +95,8 @@ class TestQuery(unittest.TestCase):
         assert aggregateSum2 == 9
 
     def test_aggregate_record_delete_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record1: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record1)
@@ -96,7 +111,8 @@ class TestQuery(unittest.TestCase):
         assert aggregateSum2 == 4
 
     def test_aggregate_record_none_in_range_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record1: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record1)
@@ -108,7 +124,8 @@ class TestQuery(unittest.TestCase):
         assert not aggregateSum1
 
     def test_delete_fail_select_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record1: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record1)
@@ -120,7 +137,8 @@ class TestQuery(unittest.TestCase):
             assert 1
 
     def test_delete_reinsert_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record1: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record1)
@@ -128,7 +146,8 @@ class TestQuery(unittest.TestCase):
         query.insert(*record1)
 
     def test_increment_record_query(self) -> None:
-        table: Table = Table("table1", 5, 0)
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, 0, bufferpool)
         query: Query = Query(table)
         record1: list[int] = [1, 2, 3, 4, 5]
         query.insert(*record1)
