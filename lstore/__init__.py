@@ -21,3 +21,5 @@ from .table import Table
 from .index import Index
 from .query import Query
 from .bufferpool import Bufferpool
+from .secondary import SecondaryIndex, DSAStructure
+from .seeding import SeedSet

@@ -11,7 +11,7 @@ from .bufferpool import Bufferpool
 from .page import LogicalPage, BasePage, TailPage
 from .page_directory import PageDirectory
 from .rid import RID_Generator
-from typing import Tuple
+from typing import Tuple, List
 
 
 class PageRange:
@@ -41,11 +41,17 @@ class PageRange:
     def is_full(self) -> bool:
         return len(self.base_pages) == MAX_BASE_PAGES_IN_PAGE_RANGE and self.base_pages[-1].is_full()
 
-    # note that for milestone the record will never actually be deleted, only invalidated
-    # in the future record will be removed during merge cycles
-    def invalidate_record(self, base_rid: int):
+    def invalidate_record(self, base_rid: int, indexed_attributes: list[int]) -> list[int | None]:
+        """
+        #: this invalidates records and returns the attributes of the record for removal
+        from secondary indices
+        `base_rid`: the rid of the base record
+        `indexed_attributes`: what columns are maintained in secondary indices that need to be removed, array of 1 or 0 values
+        """
+        # saving the page and its attributes in active memory. keep in mind attributes of
+        # record are always integers
+        col_vals: list[int] = [None if attribute == False else int(self.get_latest_column_value(base_rid, i)) for i, attribute in enumerate(indexed_attributes)]
         curr_rid: int = base_rid
-        tail_chain = []
         while True:
             if curr_rid == base_rid:
                 page = self.page_directory.get_page(self.rid_generator.base_rid_to_starting_rid(curr_rid))
@@ -58,7 +64,7 @@ class PageRange:
             page.update_indir_of_record(LOGICAL_DELETE, slot_num)
             if curr_rid == base_rid:
                 break
-        return tail_chain
+        return col_vals
 
     def insert_record(self, columns: list) -> int:
         if self.is_full():
@@ -86,12 +92,12 @@ class PageRange:
             record[index] = self.get_latest_column_value(base_rid, index)
         self.update_record(base_rid, record)
 
-    def update_record(self, base_rid: int, columns_to_update: list) -> int:
+    def update_record(self, base_rid: int, columns_to_update: list) -> Tuple[int, List[int]]:
         assert len(columns_to_update) == self.num_attr_cols
         if base_rid not in self.updated_base_rid and self.cumulative == True:
             self.updated_base_rid[base_rid] = 1
             self.check_first_update(base_rid)
-
+        needed_updates = []
         # Find latest version of record (may be in Base or Tail page)
         (
             latest_page,
@@ -104,6 +110,9 @@ class PageRange:
         if self.cumulative:
             for ind, (old_col, new_col) in enumerate(zip(latest_record_columns, columns_to_update)):
                 new_tail_record_columns.append(old_col if new_col == None else new_col)
+                # check if new column value is different from old column value, and return old value
+                # if it is different, else return None
+                needed_updates.append(None if new_col == old_col or new_col == None else int(old_col))
         else:
             new_tail_record_columns = columns_to_update.copy()
 
@@ -135,7 +144,7 @@ class PageRange:
 
         if base_page not in self.updated_base_pages:
             self.updated_base_pages.append(base_page)
-        return new_tail_page_rid
+        return new_tail_page_rid, needed_updates
 
     def get_latest_column_value(self, base_rid: int, column_index: int) -> int:
         if self.cumulative:

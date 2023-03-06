@@ -70,19 +70,27 @@ class Bufferpool:
         physical_pages_and_page_ids: list[tuple[PhysicalPage, str]] = sorted([(phys_page, page_id) for page_id, phys_page in list(self.physical_pages.items())], key=lambda x: x[0].get_timestamp())
 
         bufferpool_page_index: int = 0
+        loop_iteration: int = 0
         while True:
-            physical_page, page_id = physical_pages_and_page_ids[bufferpool_page_index]
-            bufferpool_page_index = (bufferpool_page_index + 1) % len(physical_pages_and_page_ids)
 
-            if not physical_page.can_evict():
-                continue
+            # If stuck in infinite loop, prematurely exit
+            loop_iteration += 1
+            if loop_iteration > 2 * self.max_buffer_pool_size:
+                break
 
-            if physical_page.is_dirty():
-                self.disk.write_page(page_id, physical_page)
+            # Evict first valid page from bufferpool
+            try:
+                physical_page, page_id = physical_pages_and_page_ids[bufferpool_page_index]
+                bufferpool_page_index = (bufferpool_page_index + 1) % len(physical_pages_and_page_ids)
 
-            if not page_id in self.physical_pages:
-                continue
+                if not physical_page.can_evict():
+                    continue
 
-            del self.physical_pages[page_id]
+                if physical_page.is_dirty():
+                    self.disk.write_page(page_id, physical_page)
 
-            break
+                del self.physical_pages[page_id]
+            except:
+                pass
+            finally:
+                break

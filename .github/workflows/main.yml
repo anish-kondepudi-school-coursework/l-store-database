@@ -5,19 +5,22 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2 
+      - uses: actions/checkout@v2
 
       - name: Install python
         uses: actions/setup-python@v2
         with:
           python-version: "3.10"
 
+      - name: Install dependencies
+        run: pip3 install numpy
+
       - name: Run unit tests
         run: python3 -m unittest discover tests -v
   m1-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2 
+      - uses: actions/checkout@v2
 
       - name: Install python
         uses: actions/setup-python@v2
@@ -26,20 +29,20 @@ jobs:
 
       - name: Run m1 tests
         run: python3 m1_tester.py
-      
+
       - name: Run exam m1 tests
         run: python3 exam_tester_m1.py
 
   m2-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2 
+      - uses: actions/checkout@v2
 
       - name: Install python
         uses: actions/setup-python@v2
         with:
           python-version: "3.10"
-        
+
       - name: Run m2 tests
         run: mkdir ECS165 ; python3 m2_tester_part1.py ; python3 m2_tester_part2.py
 

@@ -12,8 +12,8 @@ class RID_Generator:
         return START_BASE_RID + ((base_rid - START_BASE_RID) // max_num_records) * max_num_records
 
     def tail_rid_to_starting_rid(self, tail_rid) -> int:
-        associated_base_rid = -tail_rid
-        return -self.base_rid_to_starting_rid(associated_base_rid)
+        associated_base_rid = -int(tail_rid)
+        return -int(self.base_rid_to_starting_rid(associated_base_rid))
 
     def get_base_rids(self) -> list[int]:
         rid_high = self.curr_base_rid + PhysicalPage.max_number_of_records

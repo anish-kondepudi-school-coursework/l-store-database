@@ -12,6 +12,7 @@ from .bufferpool import Bufferpool
 from .phys_page import PhysicalPage
 
 
+
 class LogicalPage(ABC):
     def __init__(self, table_name: str, num_cols: int, bufferpool: Bufferpool) -> None:
         self.starting_rid = self.rids[-1]

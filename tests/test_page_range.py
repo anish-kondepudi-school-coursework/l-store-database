@@ -40,10 +40,11 @@ class TestCumulativePageRange(unittest.TestCase):
         record = [1, 2, 3]
         base_rid = page_range.insert_record(record)
         record_update1 = [None, 4, None]
-        tail_rid1 = page_range.update_record(base_rid, record_update1)
+        tail_rid1, _ = page_range.update_record(base_rid, record_update1)
         record_update2 = [5, None, None]
-        tail_rid2 = page_range.update_record(base_rid, record_update2)
-        page_range.invalidate_record(base_rid)
+        tail_rid2, _ = page_range.update_record(base_rid, record_update2)
+        indexed_attributes = [None for i in range(self.num_cols)]
+        page_range.invalidate_record(base_rid, indexed_attributes)
 
         base_page = page_dir.get_page(self.rid_generator.base_rid_to_starting_rid(base_rid))
         tail_page = page_dir.get_page(self.rid_generator.tail_rid_to_starting_rid(tail_rid1))

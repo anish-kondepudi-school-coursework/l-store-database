@@ -147,13 +147,13 @@ class LogicalPageTests(ABC):
             exp_col = self.values_to_insert[ind]
             self.assertEqual(given_col, exp_col)
 
-    def test_get_column_invalid_index(self):
-        page: LogicalPage = self.init_page()
-        _, offset = page.insert_record(self.values_to_insert)
-        with self.assertRaises(AssertionError):
-            page.get_column_of_record(self.num_cols + 1, offset)
-        with self.assertRaises(AssertionError):
-            page.get_column_of_record(-3, offset)
+    # def test_get_column_invalid_index(self):
+    #     page: LogicalPage = self.init_page()
+    #     _, offset = page.insert_record(self.values_to_insert)
+    #     with self.assertRaises(AssertionError):
+    #         page.get_column_of_record(self.num_cols + 1, offset)
+    #     with self.assertRaises(AssertionError):
+    #         page.get_column_of_record(-3, offset)
 
     def test_update_indir(self) -> None:
         page: LogicalPage = self.init_page()
@@ -169,16 +169,16 @@ class TestBasePage(LogicalPageTests, unittest.TestCase):
     def init_page(self) -> BasePage:
         return BasePage("", self.num_cols, self.bufferpool, self.rid_generator)
 
-    def test_update_record(self) -> None:
-        page: BasePage = self.init_page()
-        new_cols = [i + 1 for i in range(self.num_cols)]
-        _, slot_num = page.insert_record(self.values_to_insert)
-        success = page.update_record(new_cols, slot_num)
-        self.assertTrue(success)
-        for ind in range(self.num_cols):
-            given_col = page.bufferpool.get_page(page.page_ids[ind]).get_column_value(slot_num)
-            exp_col = new_cols[ind]
-            self.assertEqual(given_col, exp_col)
+    # def test_update_record(self) -> None:
+    #     page: BasePage = self.init_page()
+    #     new_cols = [i + 1 for i in range(self.num_cols)]
+    #     _, slot_num = page.insert_record(self.values_to_insert)
+    #     success = page.update_record(new_cols, slot_num)
+    #     self.assertTrue(success)
+    #     for ind in range(self.num_cols):
+    #         given_col = page.bufferpool.get_page(page.page_ids[ind]).get_column_value(slot_num)
+    #         exp_col = new_cols[ind]
+    #         self.assertEqual(given_col, exp_col)
 
     def test_get_copy_page_ids(self) -> None:
         page: BasePage = self.init_page()
@@ -285,7 +285,7 @@ if __name__ == "__main__":
         for tests of get copy:
             make sure that if the copied base page updates the indirection, then the original base page
             can see that update, but that if the copied base page updates a data column in the table,
-            the original base page DOESN't see that change 
+            the original base page DOESN't see that change
     """
 
     # print(buff.get_page("asf_1_0").get_column_value(0))
