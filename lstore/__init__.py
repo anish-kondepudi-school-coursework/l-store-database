@@ -23,3 +23,4 @@ from .query import Query
 from .bufferpool import Bufferpool
 from .secondary import SecondaryIndex, DSAStructure
 from .seeding import SeedSet
+from .mp_secondary import AsyncSecondaryIndex

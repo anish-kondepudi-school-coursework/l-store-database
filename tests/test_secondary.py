@@ -57,7 +57,7 @@ class TestSecondary(unittest.TestCase):
         expected_rids = [table.index.get_rid(record[0]) for record in records]
         table.secondary_indices[4].save_index()
         # creating new secondary index
-        secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
+        secondary = SecondaryIndex(table.name, f"attribute_4")
         # loading values in secondary index
         secondary.load_query(replace=True)
         real_rids = secondary.search_record(RECORD_VALUE)
@@ -84,7 +84,7 @@ class TestSecondary(unittest.TestCase):
         expected_rids = [table.index.get_rid(record[0]) for record in records]
         table.secondary_indices[4].save_index()
         # creating secondary index and loading it
-        secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
+        secondary = SecondaryIndex(table.name, f"attribute_4")
         secondary.load_query(replace=True)
         # cleanup, deleting the pickled file
         try:
@@ -199,7 +199,7 @@ class TestSecondary(unittest.TestCase):
         expected_rids = [table.index.get_rid(record[0]) for record in records]
         table.secondary_indices[4].save_index()
         # creating new secondary index
-        secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
+        secondary = SecondaryIndex(table.name, f"attribute_4")
         # loading values in secondary index
         secondary.load_query(replace=True)
         # cleanup, deleting the pickled file
@@ -227,7 +227,7 @@ class TestSecondary(unittest.TestCase):
         expected_rids = [table.index.get_rid(record[0]) for record in records]
         table.secondary_indices[4].save_index()
         # creating secondary index and loading it
-        secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
+        secondary = SecondaryIndex(table.name, f"attribute_4")
         secondary.load_query(replace=True)
         # cleanup, deleting the pickled file
         try:

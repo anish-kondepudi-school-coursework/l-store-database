@@ -45,7 +45,6 @@ class Table:
         #: note, this will initialize the table with a single page range and all attributes
         with a secondary indices initially
         """
-    # def __init__(self, name: str, num_columns: int, primary_key_col: int, bufferpool: Bufferpool, cumulative=True):
         self.name: str = name
         self.primary_key_col: int = primary_key_col
         self.num_columns: int = num_columns
@@ -53,13 +52,12 @@ class Table:
         self.index: Index = Index(self)
         self.page_directory: PageDirectory = PageDirectory()
         self.rid_generator: RID_Generator = RID_Generator()
-        self.mp = mp
+        self.multiprocessing = mp
         self.cumulative = cumulative
         self.secondary_indices: list[SecondaryIndex | None] = [
             SecondaryIndex(
                 self.name,
                 f"attribute_{i}",
-                multiprocess=False,
                 structure=secondary_structure,
             )
             if i != self.primary_key_col
@@ -142,7 +140,7 @@ class Table:
             rid_from_insertion: int = last_page_range.insert_record(columns)
         if rid_from_insertion != INVALID_RID:
             self.index.add_key_rid(columns[self.primary_key_col], rid_from_insertion)
-            if self.mp:
+            if self.multiprocessing:
                 pass
             else:
                 self.update_secondary_indices_serially(columns, rid_from_insertion)

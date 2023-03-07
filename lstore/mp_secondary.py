@@ -15,7 +15,7 @@ class DSAStructure(Enum):
     DICTIONARY_DICT = 6
 
 
-class SecondaryIndex:
+class AsyncSecondaryIndex:
     def __init__(
         self,
         name: str,
