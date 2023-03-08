@@ -48,10 +48,10 @@ for i in range(0, number_of_records):
     t = insert_transactions[i % number_of_transactions]
     t.add_query(query.insert, grades_table, *records[key])
 
-unique_primary = planner.find_primary_key_count(insert_transactions)
-print(unique_primary)
+planner.find_primary_key_count(insert_transactions)
+planner.create_queues()
 assert(0)
-queue_list = planner.separate()
+queue_list = planner.separate(insert_transactions)
 
 transaction_workers = []
 for i in range(num_threads):
