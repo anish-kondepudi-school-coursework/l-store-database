@@ -1,6 +1,7 @@
 from lstore.table import Table, Record
 from lstore.query import Query
 import queue
+import threading
 
 class Planner:
 
@@ -47,11 +48,46 @@ class Planner:
             offset = offset_mult*self.primary_key_count
             for primary_key in self.primary_key_list:
                 self.queue_list[primary_key + offset] = queue.Queue()
+    
+    def print_queues(self):
+        for key in self.queue_list:
+            print("Primary key: ", key)
+            while not self.queue_list[key].empty():
+                print(self.queue_list[key].get())
 
-    def separate(self, transaction_list: list):
-        #Create as many threads as planner threads states
+    def plan(self, transaction_list: list):
         #Divide transaction_list into N equal sized lists of transactions, where N = number of transactions
+        split_transactions:list =[]
+        transactions_per_priority = len(transaction_list)//self.planner_threads
+        for i in range(self.planner_threads-1): 
+            split_transactions.append(0)
+            split_transactions[i]=transaction_list[(i*transactions_per_priority):(((i+1)*transactions_per_priority)-1)]
+        split_transactions.append(0)
+        split_transactions[self.planner_threads-1]=transaction_list[(self.planner_threads-1)*transactions_per_priority:]
+
+        #Create as many threads as planner threads states
+        thread_list:list = []
+        for i in range(self.planner_threads):
+            thread_list.append(0)
+            thread_list[i]= threading.Thread(target = self.separate, args=(split_transactions[i], i))
+            thread_list[i].start()
         #Run each planner thread on its sectioned data, create the transaction queues
+        for i in range(self.planner_threads):
+            thread_list[i].join()
         #Queues with transactions separated by which record they act on will be in self.queue_list
         #In executor, before taking a queue, run a while loop to check primary_key + x, which is the primary key at lower priority levels
-        self.reset()
+
+    def separate(self, transaction_list, priority):
+        queryObj = Query(self.table)
+        primary_key: int
+        offset=priority*self.primary_key_count
+        for transaction in transaction_list:
+            for query, args in transaction.queries:
+                if(query.__func__==queryObj.insert.__func__):
+                    primary_key=args[self.table.primary_key_col]
+                elif(query.__func__==queryObj.select.__func__):
+                    if args[1]==self.table.primary_key_col:
+                        primary_key=args[0]
+                elif(query.__func__==queryObj.update.__func__):
+                    primary_key=args[0]
+                self.queue_list[primary_key + offset].put((query, args))
