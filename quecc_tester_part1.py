@@ -50,9 +50,9 @@ for i in range(0, number_of_records):
 
 planner.find_primary_key_count(insert_transactions)
 planner.create_queues()
+queue_list = planner.plan(insert_transactions)
+planner.print_queues()
 assert(0)
-queue_list = planner.separate(insert_transactions)
-
 transaction_workers = []
 for i in range(num_threads):
     transaction_workers.append(TransactionWorker())
