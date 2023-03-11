@@ -2,11 +2,71 @@ from lstore.table import Table, Record
 from lstore.query import Query
 import queue
 import threading
+import time
 
 class QueueCC:
-    def __init__(self, num_unique_records):
-        self.inner_queue_list = [queue.Queue() for _ in range(num_unique_records)]
+    def __init__(self, queue_list, record_index, max_priority):
+        self.queue_list = queue_list
+        self.record_index = record_index
+        self.priority_index = 0
+        self.max_priority = max_priority
+
+    def execute_next_queries(self) -> None:
+        assert self.priority_index < self.max_priority
+        queries = self.queue_list[self.priority_index]
+        for query, args in queries:
+            try:
+                result = query(*args)
+                if not result:
+                    raise Exception("Error while running query")
+            except:
+                #print(f"Query {query.__func__} failed on {args}")
+                continue
+        self.priority_index += 1
     
+    def done(self) -> bool:
+        return self.priority_index >= self.max_priority
+
+class Executor:
+    def __init__(self, table, num_threads):
+        self.table = table
+        self.num_threads = num_threads
+
+    def execute(self, groups): 
+        self.groups = groups
+        self.num_active_groups = len(groups)
+        executor_threads = []
+        self.num_active_lock = threading.Lock()
+        self.group_lock = threading.Lock()
+        for _ in range(self.num_threads):
+            new_thread = threading.Thread(target = self.run_transactions)
+            new_thread.start()
+            executor_threads.append(new_thread)
+        for executor_thread in executor_threads:
+            executor_thread.join()
+    
+    def run_transactions(self):
+        while self.num_active_groups > 0:
+            self.group_lock.acquire()
+            if len(self.groups) == 0:
+                self.group_lock.release()
+                # this is how to yield, according to: https://stackoverflow.com/questions/787803/how-does-a-threading-thread-yield-the-rest-of-its-quantum-in-python
+                time.sleep(0.0001)
+                continue
+            else:
+                quecc = self.groups.pop()
+                self.group_lock.release()
+                quecc.execute_next_queries()
+                if quecc.done():
+                    self.num_active_lock.acquire()
+                    self.num_active_groups -= 1
+                    self.num_active_lock.release()
+                else:
+                    self.group_lock.acquire()
+                    self.groups.append(quecc)
+                    self.group_lock.release()
+        print("Done")
+
 class Planner:
 
     """
@@ -74,8 +134,8 @@ class Planner:
         print("Remaining: ",test_dict)
 
     def create_queues(self):
-        for _ in range(self.planner_threads):
-            self.queue_list.append(QueueCC(self.primary_key_count))
+        for _ in range(self.primary_key_count):
+            self.queue_list.append([[] for _ in range(self.planner_threads)])
 
     def get_split_transactions(self, transaction_list):
         split_transactions:list =[]
@@ -91,26 +151,21 @@ class Planner:
         split_transactions = self.get_split_transactions(transaction_list)
         thread_list:list = []
         for i in range(self.planner_threads):
-            print(f"In get thread list, split transactions size at {i}: ", len(split_transactions[i]))
             new_thread = threading.Thread(target = self.separate, args=(split_transactions[i], i))
             thread_list.append(new_thread)
         return thread_list
 
     def plan(self, transaction_list: list):
         self.find_primary_key_count(transaction_list)
-        print("Num unique primary keys: ", self.primary_key_count)
-        print(self.primary_key_to_index)
         self.create_queues()
         thread_list = self.get_thread_list(transaction_list)
         for i in range(self.planner_threads):
             thread_list[i].start()
         for i in range(self.planner_threads):
             thread_list[i].join()
-        print("done")
-        for i in range(self.planner_threads):
-            for j in range(self.primary_key_count):
-                print(f"For {i}, {j}: {self.queue_list[i].inner_queue_list[j].qsize()}")
-    
+        groups = [QueueCC(self.queue_list[i], i, self.planner_threads) for i in range(self.primary_key_count)]
+        return groups
+        
     def separate(self, transaction_list, priority):
         queryObj = Query(self.table)
         for transaction in transaction_list:
@@ -124,6 +179,8 @@ class Planner:
                 elif(query.__func__==queryObj.update.__func__):
                     primary_key=args[0]
                 elif(query.__func__==queryObj.delete.__func__):
-                    primary_key=args[0]
+                    primary_key=args[0] 
                 assert primary_key in self.primary_key_to_index
-                self.queue_list[priority].inner_queue_list[self.primary_key_to_index[primary_key]].put((query, args))
+                record_ind = self.primary_key_to_index[primary_key]
+                # could this cause slow down due to cache line problem? -> http://www.nic.uoregon.edu/~khuck/ts/acumem-report/manual_html/multithreading_problems.html
+                self.queue_list[record_ind][priority].append((query, args))
