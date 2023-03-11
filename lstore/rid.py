@@ -19,20 +19,18 @@ class RID_Generator:
         return -int(self.base_rid_to_starting_rid(associated_base_rid))
 
     def get_base_rids(self) -> list[int]:
-        self.get_base_rids_lock.acquire()
-        rid_high = self.curr_base_rid + PhysicalPage.max_number_of_records
-        page_rid_space = [rid for rid in range(self.curr_base_rid, rid_high)]
-        self.curr_base_rid = rid_high
-        self.get_base_rids_lock.release
-        return page_rid_space[::-1]
+        with self.get_base_rids_lock:
+            rid_high = self.curr_base_rid + PhysicalPage.max_number_of_records
+            page_rid_space = [rid for rid in range(self.curr_base_rid, rid_high)]
+            self.curr_base_rid = rid_high
+            return page_rid_space[::-1]
 
     def get_tail_rids(self) -> list[int]:
-        self.get_tail_rids_lock.acquire()
-        rid_low = self.curr_tail_rid - PhysicalPage.max_number_of_records
-        page_rid_space = [rid for rid in range(rid_low + 1, self.curr_tail_rid + 1)]
-        self.curr_tail_rid = rid_low
-        self.get_tail_rids_lock.release()
-        return page_rid_space
+        with self.get_tail_rids_lock:
+            rid_low = self.curr_tail_rid - PhysicalPage.max_number_of_records
+            page_rid_space = [rid for rid in range(rid_low + 1, self.curr_tail_rid + 1)]
+            self.curr_tail_rid = rid_low
+            return page_rid_space
 
     def get_slot_num(self, rid: int) -> int:
         assert rid != 0

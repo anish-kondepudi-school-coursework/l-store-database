@@ -42,23 +42,21 @@ class PhysicalPage:
 
     def get_column_value(self, slot_num: int) -> int:
         assert self.__is_slot_num_valid(slot_num)
-        self.locks[slot_num].acquire()
-        column_bytes = self.data[slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE]
-        column_value = int.from_bytes(column_bytes, byteorder="big", signed=True)
-        self.timestamp = time.time()
-        self.locks[slot_num].release()
-        return column_value
+        with self.locks[slot_num]:
+            column_bytes = self.data[slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE]
+            column_value = int.from_bytes(column_bytes, byteorder="big", signed=True)
+            self.timestamp = time.time()
+            return column_value
 
     def insert_value(self, value: int, slot_num: int) -> bool:
         if not self.__is_slot_num_valid(slot_num):
             return False
-        self.locks[slot_num].acquire()
-        value_bytes = value.to_bytes(ATTRIBUTE_SIZE, byteorder="big", signed=True)
-        self.data[slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE] = value_bytes
-        self.dirty = True
-        self.timestamp = time.time()
-        self.locks[slot_num].release()
-        return True
+        with self.locks[slot_num]:
+            value_bytes = value.to_bytes(ATTRIBUTE_SIZE, byteorder="big", signed=True)
+            self.data[slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE] = value_bytes
+            self.dirty = True
+            self.timestamp = time.time()
+            return True
 
     def __is_slot_num_valid(self, slot_num: int) -> bool:
         return 0 <= slot_num < PhysicalPage.max_number_of_records
