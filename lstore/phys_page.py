@@ -1,13 +1,9 @@
 from .config import (
     PHYSICAL_PAGE_SIZE,
-    ATTRIBUTE_SIZE,
-    INDIRECTION_COLUMN,
-    SCHEMA_ENCODING_COLUMN,
-    INVALID_SLOT_NUM,
-    INVALID_RID,
+    ATTRIBUTE_SIZE
 )
+from threading import Lock
 import time
-
 
 class PhysicalPage:
     max_number_of_records: int = PHYSICAL_PAGE_SIZE // ATTRIBUTE_SIZE
@@ -21,6 +17,7 @@ class PhysicalPage:
         self.pinned: int = 0
         self.dirty: bool = False
         self.timestamp: float = time.time()
+        self.locks = [Lock() for _ in range(PhysicalPage.max_number_of_records)]
 
     def get_data(self) -> bytearray:
         return self.data
@@ -45,18 +42,22 @@ class PhysicalPage:
 
     def get_column_value(self, slot_num: int) -> int:
         assert self.__is_slot_num_valid(slot_num)
+        self.locks[slot_num].acquire()
         column_bytes = self.data[slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE]
         column_value = int.from_bytes(column_bytes, byteorder="big", signed=True)
         self.timestamp = time.time()
+        self.locks[slot_num].release()
         return column_value
 
     def insert_value(self, value: int, slot_num: int) -> bool:
         if not self.__is_slot_num_valid(slot_num):
             return False
+        self.locks[slot_num].acquire()
         value_bytes = value.to_bytes(ATTRIBUTE_SIZE, byteorder="big", signed=True)
         self.data[slot_num * ATTRIBUTE_SIZE : slot_num * ATTRIBUTE_SIZE + ATTRIBUTE_SIZE] = value_bytes
         self.dirty = True
         self.timestamp = time.time()
+        self.locks[slot_num].release()
         return True
 
     def __is_slot_num_valid(self, slot_num: int) -> bool:
