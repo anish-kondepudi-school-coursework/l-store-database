@@ -3,56 +3,50 @@ from lstore.query import Query
 import queue
 import threading
 
+class QueueCC:
+    def __init__(self, num_unique_records):
+        self.inner_queue_list = [queue.Queue() for _ in range(num_unique_records)]
+    
 class Planner:
 
     """
     # Creates a planner object.
     """
 
-    def __init__(self, table):
+    def __init__(self, table, num_planner_threads):
         self.table: Table=table
         self.primary_key_count = 0
-        self.queue_list= dict()
+        self.queue_list = []
         self.transaction_count: int = 0
-        self.primary_key_list= dict()
+        self.primary_key_to_index = dict()
         #Get planner thread count from config
-        self.planner_threads = 4
+        self.planner_threads = num_planner_threads
         #self.planner_threads = PLANNER_THREAD_COUNT
         pass
 
     def reset(self):
         self.primary_key_count = 0
-        self.primary_key_list.clear
-        self.queue_list.clear
+        self.primary_key_to_index.clear
+        self.queue_list = []
 
     def find_primary_key_count(self, transaction_list: list):
         queryObj = Query(self.table)
         for transaction in transaction_list:
             for query, args in transaction.queries:
                 if(query.__func__==queryObj.insert.__func__):
-                    if args[self.table.primary_key_col] not in self.primary_key_list:
-                        self.primary_key_list[args[self.table.primary_key_col]]=1
-                        self.primary_key_count+=1
+                    primary_key=args[self.table.primary_key_col]
                 elif(query.__func__==queryObj.select.__func__):
-                    if args[1]==self.table.primary_key_col and args[0] not in self.primary_key_list:
-                        self.primary_key_list[args[0]]=1
-                        self.primary_key_count+=1
+                    if args[1]==self.table.primary_key_col:
+                        primary_key=args[0]
                 elif(query.__func__==queryObj.update.__func__):
-                    if args[0] not in self.primary_key_list:
-                        self.primary_key_list[args[0]]=1
-                        self.primary_key_count+=1
+                    primary_key=args[0]
                 elif(query.__func__==queryObj.delete.__func__):
-                    if args[0] not in self.primary_key_list:
-                        self.primary_key_list[args[0]]=1
-                        self.primary_key_count+=1
+                    primary_key=args[0]
+                if primary_key not in self.primary_key_to_index:
+                    self.primary_key_to_index[primary_key] = self.primary_key_count
+                    self.primary_key_count += 1
         return self.primary_key_count
 
-    def create_queues(self):
-        for offset_mult in range(self.planner_threads):
-            offset = offset_mult*self.primary_key_count
-            for primary_key in self.primary_key_list:
-                self.queue_list[primary_key + offset] = queue.Queue()
-    
     def print_queues(self):
         #Checks to make sure all transactions are queued
         count:int = 0
@@ -79,35 +73,49 @@ class Planner:
             #del self.queue_list[key]
         print("Remaining: ",test_dict)
 
-    def plan(self, transaction_list: list):
-        #Divide transaction_list into N equal sized lists of transactions, where N = number of transactions
+    def create_queues(self):
+        for _ in range(self.planner_threads):
+            self.queue_list.append(QueueCC(self.primary_key_count))
+
+    def get_split_transactions(self, transaction_list):
         split_transactions:list =[]
         transactions_per_priority = len(transaction_list)//self.planner_threads
         for i in range(self.planner_threads-1): 
-            split_transactions.append(0)
-            #print((i*transactions_per_priority), (((i+1)*transactions_per_priority)-1))
-            split_transactions[i]=transaction_list[(i*transactions_per_priority):(((i+1)*transactions_per_priority))]
-        split_transactions.append(0)
-        split_transactions[self.planner_threads-1]=transaction_list[(self.planner_threads-1)*transactions_per_priority:]
-
-        #Create as many threads as planner threads states
+            sublist = transaction_list[(i*transactions_per_priority):(((i+1)*transactions_per_priority))]
+            split_transactions.append(sublist)
+        final_sublist = transaction_list[(self.planner_threads-1)*transactions_per_priority:]
+        split_transactions.append(final_sublist)
+        return split_transactions
+ 
+    def get_thread_list(self, transaction_list):
+        split_transactions = self.get_split_transactions(transaction_list)
         thread_list:list = []
         for i in range(self.planner_threads):
-            thread_list.append(0)
-            thread_list[i]= threading.Thread(target = self.separate, args=(split_transactions[i], i))
+            print(f"In get thread list, split transactions size at {i}: ", len(split_transactions[i]))
+            new_thread = threading.Thread(target = self.separate, args=(split_transactions[i], i))
+            thread_list.append(new_thread)
+        return thread_list
+
+    def plan(self, transaction_list: list):
+        self.find_primary_key_count(transaction_list)
+        print("Num unique primary keys: ", self.primary_key_count)
+        print(self.primary_key_to_index)
+        self.create_queues()
+        thread_list = self.get_thread_list(transaction_list)
+        for i in range(self.planner_threads):
             thread_list[i].start()
-        #Run each planner thread on its sectioned data, create the transaction queues
         for i in range(self.planner_threads):
             thread_list[i].join()
-        #Queues with transactions separated by which record they act on will be in self.queue_list
-        #In executor, before taking a queue, run a while loop to check primary_key + x, which is the primary key at lower priority levels
-
+        print("done")
+        for i in range(self.planner_threads):
+            for j in range(self.primary_key_count):
+                print(f"For {i}, {j}: {self.queue_list[i].inner_queue_list[j].qsize()}")
+    
     def separate(self, transaction_list, priority):
         queryObj = Query(self.table)
-        primary_key: int
-        offset=priority*self.primary_key_count
         for transaction in transaction_list:
             for query, args in transaction.queries:
+                primary_key: int
                 if(query.__func__==queryObj.insert.__func__):
                     primary_key=args[self.table.primary_key_col]
                 elif(query.__func__==queryObj.select.__func__):
@@ -117,4 +125,5 @@ class Planner:
                     primary_key=args[0]
                 elif(query.__func__==queryObj.delete.__func__):
                     primary_key=args[0]
-                self.queue_list[primary_key + offset].put((query, args))
+                assert primary_key in self.primary_key_to_index
+                self.queue_list[priority].inner_queue_list[self.primary_key_to_index[primary_key]].put((query, args))
