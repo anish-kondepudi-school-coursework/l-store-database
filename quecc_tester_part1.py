@@ -2,7 +2,7 @@ from lstore.db import Database
 from lstore.query import Query
 from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
-from lstore.planner import Planner
+from lstore.planner import Planner, Executor
 
 from random import choice, randint, sample, seed
 
@@ -18,11 +18,12 @@ query = Query(grades_table)
 # dictionary for records to test the database: test directory
 records = {}
 
-number_of_records = 10
-number_of_transactions = 5
-num_threads = 4
+number_of_records = 1000
+number_of_transactions = 100
+num_threads = 8
 
 planner = Planner(grades_table, num_threads)
+executor = Executor(grades_table, num_threads)
 
 # create index on the non primary columns
 try:
@@ -43,14 +44,22 @@ for i in range(number_of_transactions):
     insert_transactions.append(Transaction())
 
 for i in range(0, number_of_records):
-    key = 92106429 + 2*i
+    key = 92106429 + i
     keys.append(key)
     records[key] = [key, randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20)]
     t = insert_transactions[i % number_of_transactions]
     t.add_query(query.insert, grades_table, *records[key])
 
 # combine these
-planner.plan(insert_transactions)
+groups = planner.plan(insert_transactions)
+print("Groups: ", groups)
+print("Length of groups: ", len(groups))
+executor.execute(groups)
+# print("Len of queue list: ", len(queue_list))
+# print("Len of queue list at 0: ", len(queue_list[0]))
+# print(queue_list)
+#executor.execute(queue_list)
+#queue_list[0].execute_next_transactions()
 # planner.find_primary_key_count(insert_transactions)
 # planner.create_queues()
 # queue_list = planner.plan(insert_transactions)
@@ -74,7 +83,7 @@ planner.plan(insert_transactions)
 #     transaction_workers[i].join()
 
 
-# # Check inserted records using select query in the main thread outside workers
+#Check inserted records using select query in the main thread outside workers
 # for key in keys:
 #     record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
 #     error = False
@@ -82,11 +91,10 @@ planner.plan(insert_transactions)
 #         if column != records[key][i]:
 #             error = True
 #     if error:
-#         print('select error on', key, ':', record, ', correct:', records[key])
+#         print('select error on', key, ':', record[key], ', correct:', records[key])
 #     else:
-#         pass
-#         # print('select on', key, ':', record)
+#         print('select on', key, ':', record)
 # print("Select finished")
 
 
-# db.close()
+db.close()
