@@ -17,7 +17,7 @@ class PhysicalPage:
         self.pinned: int = 0
         self.dirty: bool = False
         self.timestamp: float = time.time()
-        self.locks = [Lock() for _ in range(PhysicalPage.max_number_of_records)]
+        self.locks: list[Lock] = [Lock() for _ in range(PhysicalPage.max_number_of_records)]
 
     def get_data(self) -> bytearray:
         return self.data
