@@ -138,9 +138,28 @@ class Table:
         self.merge_queue = None
         self.stop_merging = None
         self.merge_thread = None
-        for secondary in self.secondary_indices:
-            if secondary:
-                secondary.save_index()
+        if self.multiprocessing:
+            self.save_indices()
+            self.stop_all_secondary_indices()
+        else:
+            for secondary in self.secondary_indices:
+                if secondary:
+                    secondary.save_index()
+
+    def save_indices(self) -> None:
+        request_ids = []
+        for request_queue in self.request_queues:
+            if request_queue:
+                request_id = self.get_next_request_id()
+                request = (Operation.SAVE_INDEX, 0, 0, request_id)
+                self.pending_requests[request_id] = request
+                request_queue.put([request])
+                request_ids.append(request_id)
+
+        responses = self.wait_for_async_responses()
+        statuses = [response[1] if response and response[0] and response[0][3] in request_ids else None for response in responses]
+        return statuses
+
 
     def delete_record(self, primary_key: int) -> None:
         """
@@ -222,6 +241,7 @@ class Table:
                     self.request_queues[i].put([request])
                 except Exception as e:
                     print("Error in update_secondary_indices_multiprocessing")
+
     def get_next_request_id(self):
         self.request_id_counter += 1
         return self.request_id_counter
@@ -287,21 +307,25 @@ class Table:
         self.request_queues[search_key_index].put([request])
         return request, self.preempt_wait_for_async_response(search_key_index, request_id)
 
-    def preempt_wait_for_async_response(self, search_key_index: int,  request_id: int) -> bool:
+    def preempt_wait_for_async_response(self, search_key_index: int,  request_id: int) -> List[int] | bool | Exception:
         """
         #: checks if the request has completed
         """
+        if request_id in self.completed_requests:
+            response = self.completed_requests[request_id]
+            del self.completed_requests[request_id]
+            return response
         while True:
             queue = self.response_queues[search_key_index]
             if not queue.empty():
                 response_id, response = queue.get()
                 if response_id == request_id:
+                    # no need to return request, it is memory of caller
                     del self.pending_requests[response_id]
                     return response
                 else:
                     self.completed_requests[response_id] = response
                     del self.pending_requests[response_id]
-            time.sleep(0.1)  # Wait for response to be available
 
     def wait_for_async_responses(self) -> List[Tuple[Tuple[Operation, int, int, int], List[int] | bool | Exception]]:
         responses = []

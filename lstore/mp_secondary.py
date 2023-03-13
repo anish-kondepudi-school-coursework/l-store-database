@@ -86,6 +86,12 @@ class AsyncSecondaryIndex(mp.Process):
                 return (request_id, True)
             elif operation == Operation.SEARCH_RECORD:
                 return (request_id, self.search_record(key))
+            elif operation == Operation.SAVE_INDEX:
+                self.save_index()
+                return (request_id, True)
+            elif operation == Operation.LOAD_INDEX:
+                self.load_query()
+                return (request_id, True)
         except Exception as error:
             return (request_id, error)
 

@@ -16,3 +16,4 @@ class Operation(Enum):
     INSERT_RECORD = 2
     SEARCH_RECORD = 3
     SAVE_INDEX = 4
+    LOAD_INDEX = 5
