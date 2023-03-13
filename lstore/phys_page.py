@@ -1,10 +1,6 @@
 from .config import (
     PHYSICAL_PAGE_SIZE,
-    ATTRIBUTE_SIZE,
-    INDIRECTION_COLUMN,
-    SCHEMA_ENCODING_COLUMN,
-    INVALID_SLOT_NUM,
-    INVALID_RID,
+    ATTRIBUTE_SIZE
 )
 import time
 
