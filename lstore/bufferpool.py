@@ -1,7 +1,6 @@
 from .phys_page import PhysicalPage
 from .disk import DiskInterface
 from copy import deepcopy
-from threading import Lock
 import os
 
 
@@ -12,58 +11,52 @@ class Bufferpool:
         self.disk: DiskInterface = DiskInterface(path)
         if path != "":
             os.makedirs(path, exist_ok=True)
-        self.lock: Lock = Lock()
-        self.lock2: Lock = Lock()
 
     def insert_page(self, page_id: str, slot_num: int, value: int) -> bool:
-        with self.lock:
-            if page_id in self.physical_pages:
-                physical_page = self.physical_pages[page_id]
-            elif self.disk.page_exists(page_id):
-                self.__evict_page_if_bufferpool_full()
-                physical_page = self.disk.get_page(page_id)
-            else:
-                self.__evict_page_if_bufferpool_full()
-                physical_page: PhysicalPage = PhysicalPage()
+        if page_id in self.physical_pages:
+            physical_page = self.physical_pages[page_id]
+        elif self.disk.page_exists(page_id):
+            self.__evict_page_if_bufferpool_full()
+            physical_page = self.disk.get_page(page_id)
+        else:
+            self.__evict_page_if_bufferpool_full()
+            physical_page: PhysicalPage = PhysicalPage()
 
-            physical_page.pin_page()
-            physical_page.insert_value(value, slot_num)
-            physical_page.set_dirty()
+        physical_page.pin_page()
+        physical_page.insert_value(value, slot_num)
+        physical_page.set_dirty()
 
-            self.physical_pages[page_id] = physical_page
-            physical_page.unpin_page()
-            return True
+        self.physical_pages[page_id] = physical_page
+        physical_page.unpin_page()
+        return True
 
     def copy_page(self, source_page_id: str, dest_page_id: str) -> bool:
-        with self.lock2:
-            if dest_page_id in self.physical_pages or self.disk.page_exists(dest_page_id):
-                return False
-            self.__evict_page_if_bufferpool_full()
-            source_page = self.get_page(source_page_id)
-            source_page_copy = deepcopy(source_page)
-            self.__evict_page_if_bufferpool_full()
-            source_page_copy.set_dirty()
-            self.physical_pages[dest_page_id] = source_page_copy
-            return True
+        if dest_page_id in self.physical_pages or self.disk.page_exists(dest_page_id):
+            return False
+        self.__evict_page_if_bufferpool_full()
+        source_page = self.get_page(source_page_id)
+        source_page_copy = deepcopy(source_page)
+        self.__evict_page_if_bufferpool_full()
+        source_page_copy.set_dirty()
+        self.physical_pages[dest_page_id] = source_page_copy
+        return True
 
     def get_page(self, page_id: str) -> PhysicalPage:
-        with self.lock:
-            if page_id in self.physical_pages:
-                return self.physical_pages[page_id]
+        if page_id in self.physical_pages:
+            return self.physical_pages[page_id]
 
-            if not self.disk.page_exists(page_id):
-                return None
+        if not self.disk.page_exists(page_id):
+            return None
 
-            self.__evict_page_if_bufferpool_full()
+        self.__evict_page_if_bufferpool_full()
 
-            physical_page: PhysicalPage = self.disk.get_page(page_id)
-            self.physical_pages[page_id] = physical_page
-            return physical_page
+        physical_page: PhysicalPage = self.disk.get_page(page_id)
+        self.physical_pages[page_id] = physical_page
+        return physical_page
 
     def evict_all_pages(self) -> None:
-        with self.lock:
-            for _ in range(len(self.physical_pages)):
-                self._evict_page()
+        for _ in range(len(self.physical_pages)):
+            self._evict_page()
 
     def __evict_page_if_bufferpool_full(self) -> None:
         num_free_pages: int = self.max_buffer_pool_size - len(self.physical_pages)
