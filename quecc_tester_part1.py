@@ -52,8 +52,8 @@ for i in range(0, number_of_records):
 
 # combine these
 groups = planner.plan(insert_transactions)
-print("Groups: ", groups)
-print("Length of groups: ", len(groups))
+#print("Groups: ", groups)
+#print("Length of groups: ", len(groups))
 executor.execute(groups)
 # print("Len of queue list: ", len(queue_list))
 # print("Len of queue list at 0: ", len(queue_list[0]))
@@ -84,17 +84,14 @@ executor.execute(groups)
 
 
 #Check inserted records using select query in the main thread outside workers
-# for key in keys:
-#     record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
-#     error = False
-#     for i, column in enumerate(record.columns):
-#         if column != records[key][i]:
-#             error = True
-#     if error:
-#         print('select error on', key, ':', record[key], ', correct:', records[key])
-#     else:
-#         print('select on', key, ':', record)
-# print("Select finished")
-
+for key in keys:
+    record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
+    error = False
+    for i, column in enumerate(record.columns):
+        if column != records[key][i]:
+            error = True
+    if error:
+        print('select error on', key, ':', record[key], ', correct:', records[key])
+print("Select finished")
 
 db.close()
