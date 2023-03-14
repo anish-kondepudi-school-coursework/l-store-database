@@ -42,30 +42,39 @@ class Executor:
             new_thread = threading.Thread(target = self.run_transactions)
             new_thread.start()
             executor_threads.append(new_thread)
+        #print("Waiting for threads --EXECUTE", flush=False)
         for executor_thread in executor_threads:
             executor_thread.join()
     
     def run_transactions(self):
         while self.num_active_groups > 0:
+            #print(f"    Num active groups {self.num_active_groups}, acquiring lock...", flush=False)
             self.group_lock.acquire()
             if len(self.groups) == 0:
+                #print(" Releasing lock", flush=False)
                 self.group_lock.release()
+                #print(" Yielding ...", flush=False)
                 # this is how to yield, according to: https://stackoverflow.com/questions/787803/how-does-a-threading-thread-yield-the-rest-of-its-quantum-in-python
                 time.sleep(0.0001)
                 continue
             else:
+                #print(" popping from groups and releasing group lock", flush=False)
                 quecc = self.groups.pop()
                 self.group_lock.release()
+                #print(" executing next queries...", flush=False)
                 quecc.execute_next_queries()
+                #print(" executed next queries", flush=False)
                 if quecc.done():
+                    #print(" Acquiring num active lock", flush=False)
                     self.num_active_lock.acquire()
                     self.num_active_groups -= 1
                     self.num_active_lock.release()
+                    #print(" Releasing num active lock", flush=False)
                 else:
                     self.group_lock.acquire()
                     self.groups.append(quecc)
                     self.group_lock.release()
-        print("Done")
+        #print("Done")
 
 class Planner:
 

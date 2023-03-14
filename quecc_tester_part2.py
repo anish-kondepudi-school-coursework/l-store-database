@@ -6,6 +6,8 @@ from lstore.planner import Planner, Executor
 
 from random import choice, randint, sample, seed
 
+print("Starting")
+
 db = Database()
 db.open('./ECS165')
 
@@ -20,8 +22,8 @@ records = {}
 
 number_of_records = 1000
 number_of_transactions = 100
-number_of_operations_per_record = 10
-num_threads = 8 
+number_of_operations_per_record = 5
+num_threads = 8
 
 planner = Planner(grades_table, num_threads)
 executor = Executor(grades_table, num_threads)
@@ -30,12 +32,14 @@ keys = []
 records = {}
 seed(3562901)
 
+#print("Starting insert:")
+
 for i in range(0, number_of_records):
     key = 92106429 + i
     records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
     query.insert(*records[key])
 keys = sorted(list(records.keys()))
-print("Insert finished")
+#print("Insert finished")
 
 # transaction_workers = []
 transactions = []
@@ -60,12 +64,19 @@ for j in range(number_of_operations_per_record):
             records[key][i] = value
             transactions[key % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
             transactions[key % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
-
+ 
+#print("Planning...")
 groups = planner.plan(transactions)
-print("Groups: ", groups)
-print("Length of groups: ", len(groups))
+#print("Done planning")
+# #print("Groups: ", groups)
+# #print("Length of groups: ", len(groups))
+#print("Executing...")
+# import sys
+# sys.stdout.flush()
 executor.execute(groups)
+#print("done executing")
 
+#print("Selecting")
 score = len(keys)
 for key in keys:
     try:
