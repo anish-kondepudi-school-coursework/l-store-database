@@ -41,6 +41,17 @@ class PageRange:
         self.insert_lock = Lock()
         self.update_lock = Lock()
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['insert_lock']
+        del state['update_lock']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.insert_lock = Lock()
+        self.update_lock = Lock()
+
     def is_full(self) -> bool:
         return len(self.base_pages) == MAX_BASE_PAGES_IN_PAGE_RANGE and self.base_pages[-1].is_full()
 

@@ -10,6 +10,17 @@ class RID_Generator:
         self.base_rid_lock = Lock()
         self.tail_rid_lock = Lock()
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['base_rid_lock']
+        del state['tail_rid_lock']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.base_rid_lock = Lock()
+        self.tail_rid_lock = Lock()
+
     def base_rid_to_starting_rid(self, base_rid) -> int:
         max_num_records = PhysicalPage.max_number_of_records
         return START_BASE_RID + ((base_rid - START_BASE_RID) // max_num_records) * max_num_records
