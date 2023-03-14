@@ -21,6 +21,7 @@ records = {}
 number_of_records = 10
 number_of_transactions = 5
 num_threads = 4
+number_of_operations_per_record = 5
 
 planner = Planner(grades_table, num_threads)
 
@@ -63,8 +64,16 @@ planner.plan(insert_transactions)
 # for i in range(number_of_transactions):
 #     transaction_workers[i % num_threads].add_transaction(insert_transactions[i])
 
-
-
+# run insertion
+# replace this with executor!!
+for i in range(planner.planner_threads):
+    for j in range(planner.primary_key_count):
+        query_obj = planner.queue_list[i].inner_queue_list[j]
+        if not query_obj.empty():
+            for item in query_obj.queue:
+                _query, _args = item[0], item[1]
+                _query(*_args)
+print("Insert finished")
 # # run transaction workers
 # for i in range(num_threads):
 #     transaction_workers[i].run()
@@ -74,19 +83,49 @@ planner.plan(insert_transactions)
 #     transaction_workers[i].join()
 
 
-# # Check inserted records using select query in the main thread outside workers
-# for key in keys:
-#     record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
-#     error = False
-#     for i, column in enumerate(record.columns):
-#         if column != records[key][i]:
-#             error = True
-#     if error:
-#         print('select error on', key, ':', record, ', correct:', records[key])
-#     else:
-#         pass
-#         # print('select on', key, ':', record)
-# print("Select finished")
+# Check inserted records using select query in the main thread outside workers
+for key in keys:
+    record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
+    error = False
+    for i, column in enumerate(record.columns):
+        if column != records[key][i]:
+            error = True
+    if error:
+        print('select error on', key, ':', record, ', correct:', records[key])
+    else:
+        pass
+        # print('select on', key, ':', record)
+print("Select finished")
+
+update_transactions = []
+
+for i in range(number_of_transactions):
+    update_transactions.append(Transaction())
+# x update on every column
+for j in range(number_of_operations_per_record):
+    for key in keys:
+        updated_columns = [None, None, None, None, None]
+        for i in range(2, grades_table.num_columns):
+            # updated value
+            value = randint(0, 20)
+            updated_columns[i] = value
+            # copy record to check
+            original = records[key].copy()
+            # update our test directory
+            records[key][i] = value
+            update_transactions[key % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
+            update_transactions[key % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
+
+planner.plan(update_transactions)
+
+for i in range(planner.planner_threads):
+    for j in range(planner.primary_key_count):
+        query_obj = planner.queue_list[i].inner_queue_list[j]
+        if not query_obj.empty():
+            for item in query_obj.queue:
+                _query, _args = item[0], item[1]
+                _query(*_args)
+print("Update finished")
 
 
-# db.close()
+db.close()
