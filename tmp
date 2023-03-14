@@ -1,0 +1,11 @@
+test_get_latest_column_value_after_insert (tests.test_page_range.TestCumulativePageRange) ... ok
+test_get_latest_column_value_after_update (tests.test_page_range.TestCumulativePageRange) ... ok
+test_insert_column (tests.test_page_range.TestCumulativePageRange) ... ok
+test_insert_column_when_page_range_full (tests.test_page_range.TestCumulativePageRange) ... ok
+test_invalidate_record (tests.test_page_range.TestCumulativePageRange) ... ok
+test_is_full (tests.test_page_range.TestCumulativePageRange) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.600s
+
+OK
