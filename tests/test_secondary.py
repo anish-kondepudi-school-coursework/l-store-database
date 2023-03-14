@@ -5,6 +5,10 @@ from lstore import SecondaryIndex, Table, DSAStructure, Bufferpool, DiskInterfac
 import copy
 
 
+# constants
+TABLE_NAME = "table1_test"
+ATTRIBUTE_NAME = "attribute_4"
+
 class TestSecondary(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -16,6 +20,10 @@ class TestSecondary(unittest.TestCase):
     @classmethod
     def tearDownClass(self):
         self.table: Table = None
+        try:
+            os.remove(f"{TABLE_NAME}_attr_{ATTRIBUTE_NAME}")
+        except OSError:
+            pass
 
     def create_bufferpool(self) -> Bufferpool:
         bufferpool = Bufferpool(1000, "")
@@ -24,7 +32,7 @@ class TestSecondary(unittest.TestCase):
         return bufferpool
 
     def test_adding_secondary_array(self) -> None:
-        TABLE_NAME = "table1_test"
+        self.check_if_saved_exists()
         bufferpool = self.create_bufferpool()
         table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         RECORD_VALUE: int = 5
@@ -42,7 +50,7 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(expected_rids, real_rids)
 
     def test_loading_secondary_proper_array(self) -> None:
-        TABLE_NAME = "table1_test"
+        self.check_if_saved_exists()
         bufferpool = self.create_bufferpool()
         table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         RECORD_VALUE: int = 5
@@ -57,20 +65,20 @@ class TestSecondary(unittest.TestCase):
         expected_rids = [table.index.get_rid(record[0]) for record in records]
         table.secondary_indices[4].save_index()
         # creating new secondary index
-        secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
+        secondary = SecondaryIndex(table.name, ATTRIBUTE_NAME, structure=DSAStructure.DICTIONARY_ARRAY)
         # loading values in secondary index
         secondary.load_query(replace=True)
         real_rids = secondary.search_record(RECORD_VALUE)
         try:
-            os.remove("table1_test_attr_attribute_4")
+            os.remove(f"{TABLE_NAME}_attr_{ATTRIBUTE_NAME}")
         except OSError:
             pass
         # checking the secondary index
         self.assertEqual(expected_rids, real_rids)
 
     def test_loading_secondary_proper_and_insert_array(self) -> None:
+        self.check_if_saved_exists()
         RECORD_VALUE: int = 5
-        TABLE_NAME = "table1_test"
         bufferpool = self.create_bufferpool()
         table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         records: list[list[int]] = [
@@ -84,11 +92,11 @@ class TestSecondary(unittest.TestCase):
         expected_rids = [table.index.get_rid(record[0]) for record in records]
         table.secondary_indices[4].save_index()
         # creating secondary index and loading it
-        secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
+        secondary = SecondaryIndex(table.name, ATTRIBUTE_NAME)
         secondary.load_query(replace=True)
         # cleanup, deleting the pickled file
         try:
-            os.remove("table1_test_attr_attribute_4")
+            os.remove(f"{TABLE_NAME}_attr_{ATTRIBUTE_NAME}")
         except OSError:
             pass
         # checking the secondary index
@@ -104,8 +112,8 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(expected_rids, real_rids)
 
     def test_inserting_primary_key_again_array(self) -> None:
+        self.check_if_saved_exists()
         RECORD_VALUE: int = 5
-        TABLE_NAME = "table1_test"
         bufferpool = self.create_bufferpool()
         table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         records: list[list[int]] = [
@@ -129,6 +137,7 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(expected_rids, secondary_rids)
 
     def test_for_update_changes_array(self) -> None:
+        self.check_if_saved_exists()
         bufferpool = self.create_bufferpool()
         table: Table = Table("table1", 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY)
         RECORD_VALUE: int = 5
@@ -166,7 +175,7 @@ class TestSecondary(unittest.TestCase):
 
     """ Testing for dictionary to set structure """
     def test_adding_secondary_set(self) -> None:
-        TABLE_NAME = "table1_test"
+        self.check_if_saved_exists()
         bufferpool = self.create_bufferpool()
         table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         RECORD_VALUE: int = 5
@@ -184,7 +193,7 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(set(expected_rids), real_rids)
 
     def test_loading_secondary_proper_set(self) -> None:
-        TABLE_NAME = "table1_test"
+        self.check_if_saved_exists()
         bufferpool = self.create_bufferpool()
         table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         RECORD_VALUE: int = 5
@@ -199,12 +208,12 @@ class TestSecondary(unittest.TestCase):
         expected_rids = [table.index.get_rid(record[0]) for record in records]
         table.secondary_indices[4].save_index()
         # creating new secondary index
-        secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
+        secondary = SecondaryIndex(table.name, ATTRIBUTE_NAME, DSAStructure.DICTIONARY_SET)
         # loading values in secondary index
         secondary.load_query(replace=True)
         # cleanup, deleting the pickled file
         try:
-            os.remove("table1_test_attr_attribute_4")
+            os.remove(f"{TABLE_NAME}_attr_{ATTRIBUTE_NAME}")
         except OSError:
             pass
         # checking the secondary index
@@ -212,8 +221,8 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(expected_rids.sort(), list(real_rids).sort())
 
     def test_loading_secondary_proper_and_insert_set(self) -> None:
+        self.check_if_saved_exists()
         RECORD_VALUE: int = 5
-        TABLE_NAME = "table1_test"
         bufferpool = self.create_bufferpool()
         table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         records: list[list[int]] = [
@@ -227,11 +236,11 @@ class TestSecondary(unittest.TestCase):
         expected_rids = [table.index.get_rid(record[0]) for record in records]
         table.secondary_indices[4].save_index()
         # creating secondary index and loading it
-        secondary = SecondaryIndex(table.name, f"attribute_4", multiprocess=False)
+        secondary = SecondaryIndex(table.name, ATTRIBUTE_NAME)
         secondary.load_query(replace=True)
         # cleanup, deleting the pickled file
         try:
-            os.remove("table1_test_attr_attribute_4")
+            os.remove(f"{TABLE_NAME}_attr_{ATTRIBUTE_NAME}")
         except OSError:
             pass
         # checking the secondary index
@@ -247,8 +256,8 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(expected_rids.sort(), list(real_rids).sort())
 
     def test_inserting_primary_key_again_set(self) -> None:
+        self.check_if_saved_exists()
         RECORD_VALUE: int = 5
-        TABLE_NAME = "table1_test"
         bufferpool = self.create_bufferpool()
         table: Table = Table(TABLE_NAME, 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         records: list[list[int]] = [
@@ -272,6 +281,7 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(expected_rids.sort(), list(secondary_rids).sort())
 
     def test_for_update_changes_set(self) -> None:
+        self.check_if_saved_exists()
         bufferpool = self.create_bufferpool()
         table: Table = Table("table1", 5, 0, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET)
         RECORD_VALUE: int = 5
@@ -306,6 +316,11 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(expected_rids_1.sort(), list(values_after_update_1).sort())
         self.assertEqual(expected_rids_2.sort(), list(values_after_update_2).sort())
 
+    """
+    Helper function
+    """
+    def check_if_saved_exists(self) -> None:
+        self.assertEqual(os.path.isfile(f"{TABLE_NAME}_attr_{ATTRIBUTE_NAME}"), False)
 
 if __name__ == "__main__":
     unittest.main()

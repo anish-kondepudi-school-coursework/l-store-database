@@ -1,34 +1,99 @@
 import os
 import pickle
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 from enum import Enum
+import multiprocessing as mp
+import time
+from multiprocessing.synchronize import Event
 from .seeding import SeedSet
-from .enums import DSAStructure
+from .enums import DSAStructure, Operation
 
+class AsyncSecondaryIndex(mp.Process):
+    """
+    #: An asynchronous secondary index that is iniitalized and managed
+    """
 
-class SecondaryIndex:
     def __init__(
         self,
         name: str,
         attribute: str,
+        request_queue: mp.Queue,
+        response_queue: mp.Queue,
+        stop_event: Event,
         structure: DSAStructure = DSAStructure.DICTIONARY_SET,
         seed: bool = False,
     ) -> None:
         """
         `name`: name of the parent table
-        `attribute`: identifying name of attribute, used when saving index in secondary memory
+        `attribute`: identifying name of attribute, used when saving index in secondary memory and for identifying the worker process
+        `structure`: the structure of the secondary index, used to determine which implementation to use
+        `request_queue`: queue for receiving requests from the server
+        `response_queue`: queue for sending responses to the server
+        `stop_event`: event for stopping the worker process
         #: the search object (dict or btree) and seeding objects are either loaded from secondary memory
         or initialized using the load_query method.
         """
+        # initializing multiprocessing components of the object
+        super().__init__()
+        self.task_queue = request_queue
+        self.result_queue = response_queue
+        self.stop_event: Event = stop_event
+        # setting the descriptors of the secondary index structure and name
         self.index_name = f"{name}_attr_{attribute}"
         self.structure: DSAStructure = structure
-        # initializing seeds if deciding to maintain
+        # initializing the internal data structure of the secondary index itself
         if seed:
             self.seeds: SeedSet = SeedSet([])
         else:
             self.seeds: bool = False
-        self.dictionary: Dict[int, List[int]] = {}
+        self.initialize_structure()
         self.load_query(replace=True)
+
+    def run(self):
+        """
+        #: Continously runs the worker process, waiting for requests from the server
+        #: Terminates when the Table object uses this object's respective process' stop_event to terminate
+        #: Reads from the task_queue, which contains arrays of operations, and then performs them
+        #: Writes to the result_queue, which contains the results of the operations
+        """
+        while not self.stop_event.is_set():
+            if not self.task_queue.empty():
+                # note that requests are batched on the level of the table
+                while not self.task_queue.empty():
+                    # batches contain the operation to be performed, the key, the rid, and the request ID
+                    batch: List[Tuple[Operation, int, int, int]] = self.task_queue.get()
+                    for request in batch:
+                        response = self.perform_operation(request)
+                        self.result_queue.put(response)
+
+    def perform_operation(self, request: Tuple[Operation, int, int, int]) -> Tuple[int, bool | List[int] | Exception]:
+        """
+        `operation`: the operation to be performed
+        `key`: the key to be added to the index
+        `rid`: the rid of the record that is being added to the index
+        `request_id`: the ID of the request, used to identify the request in the result queue
+        #: Performs the operation on the secondary index, and returns the result of the operation and
+        the associated request ID
+        #: Upon failure, returns the request ID and the error message
+        """
+        operation, key, rid, request_id = request
+        try:
+            if operation == Operation.INSERT_RECORD:
+                self.add_record(key, rid)
+                return (request_id, True)
+            elif operation == Operation.DELETE_RECORD:
+                self.delete_record(key, rid)
+                return (request_id, True)
+            elif operation == Operation.SEARCH_RECORD:
+                return (request_id, self.search_record(key))
+            elif operation == Operation.SAVE_INDEX:
+                self.save_index()
+                return (request_id, True)
+            elif operation == Operation.LOAD_INDEX:
+                self.load_query()
+                return (request_id, True)
+        except Exception as error:
+            return (request_id, error)
 
     def initialize_structure(self):
         if self.structure == DSAStructure.B_TREE_ARRAY:
