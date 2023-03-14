@@ -111,10 +111,14 @@ class Table:
     def stop_secondary_index(self, i):
         self.stop_events[i].set()
         self.secondary_indices[i].join()
+        self.secondary_indices[i] = None
+        self.stop_events[i] = None
+        self.request_queues[i] = None
+        self.response_queues[i] = None
 
     def stop_all_secondary_indices(self):
         for i in range(self.num_columns):
-            if i != self.primary_key_col:
+            if i != self.primary_key_col and self.secondary_indices[i]:
                 self.stop_secondary_index(i)
             else: continue
 
@@ -170,12 +174,26 @@ class Table:
         vals = page_range.invalidate_record(
             rid, [i != None for i in self.secondary_indices]
         )
-        for i, val in enumerate(vals):
-            if val == None:
-                continue
-            self.secondary_indices[i].delete_record(val, rid)
+        if self.multiprocessing:
+            self.delete_secondary_record_async(rid, vals)
+        else:
+            for i, val in enumerate(vals):
+                if val == None:
+                    continue
+                self.secondary_indices[i].delete_record(val, rid)
         self.index.delete_key(primary_key)
-        self.page_directory.delete_page(primary_key)
+
+    def delete_secondary_record_async(self, rid, vals):
+        for i, attribute in enumerate(vals):
+            if i == self.primary_key_col or self.secondary_indices[i] == None:
+                continue
+            try:
+                request_id = self.get_next_request_id()
+                request: Tuple[Operation, int, int, int] = (Operation.DELETE_RECORD, attribute, rid, request_id)
+                self.pending_requests[request_id] = request
+                self.request_queues[i].put([request])
+            except Exception as e:
+                print("error", e)
 
     def insert_record(self, columns: list) -> bool:
         """
@@ -334,6 +352,8 @@ class Table:
                 if queue == None:
                     continue
                 while not queue.empty():
+                    # removes from queue the request and chekcs their status
+                    # note the checking for status must be modified to retry when failed
                     response_id, response = queue.get()
                     original_request = self.pending_requests.pop(response_id)
                     responses.append((original_request, response))

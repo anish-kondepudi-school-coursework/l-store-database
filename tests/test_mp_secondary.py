@@ -133,7 +133,6 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(list(response), expected_rids)
         stop_event.set()
         index.join()
-        table.stop_all_secondary_indices()
 
     def test_save_load_multiprocessing(self) -> None:
         self.delete_all_saved_indices()
@@ -184,6 +183,38 @@ class TestSecondary(unittest.TestCase):
         self.assertEqual(list(response), expected_rids)
         stop_event.set()
         index.join()
+
+
+    def test_delete_functionality(self) -> None:
+        self.delete_all_saved_indices()
+        bufferpool = self.create_bufferpool()
+        table: Table = Table(
+            TABLE_NAME,
+            5,
+            0,
+            bufferpool,
+            mp=True,
+            secondary_structure=DSAStructure.DICTIONARY_SET,
+        )
+        records: list[list[int]] = [
+            [1, 2, 3, 4, RECORD_VALUE],
+            [2, 6, 5, 1, RECORD_VALUE],
+            [3, 2, 8, 1, RECORD_VALUE],
+            [4, 1, 7, 0, RECORD_VALUE],
+            [5, 9, 4, 2, RECORD_VALUE],
+        ]
+        for record in records:
+            table.insert_record(record)
+        table.wait_for_async_responses()
+        expected_rids = [table.index.get_rid(record[0]) for record in records]
+        # remove the last record in the records array
+        self.assertEqual(len(expected_rids), len(records))
+        table.delete_record(records[-1][0])
+        table.wait_for_async_responses()
+        _, response = table.search_secondary_multiprocessing(RECORD_VALUE, 4)
+        self.assertEqual(len(response), len(records) - 1)
+        self.assertEqual(list(response), expected_rids[:-1])
+        table.stop_all_secondary_indices()
 
     """
     Helper function
