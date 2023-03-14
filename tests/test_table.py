@@ -120,11 +120,78 @@ class TestTable(unittest.TestCase):
         brute_search_indices = table.brute_force_search(RECORD_VALUE, 2)
         self.assertEqual(list(expected_rids), brute_search_indices)
 
-    # def test_update_non_existing_record(self) -> None:
-    #     bufferpool = self.create_bufferpool()
-    #     table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
-    #     with self.assertRaises(AssertionError):
-    #         table.update_record(1, [90, 14])
+    def test_update_existent_record_multiprocessing(self) -> None:
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 3, self.primary_key_col, bufferpool, mp=True)
+        record: list[int] = [10, 20, 30]
+        new_record: list[int] = [11, 21, 31]
+
+        table.insert_record(record)
+        table.wait_for_async_responses()
+        old_rid: int = table.index.get_rid(record[self.primary_key_col])
+        update_ok: bool = table.update_record(record[self.primary_key_col], new_record)
+        self.assertTrue(update_ok)
+
+        given_rid: int = table.index.get_rid(new_record[self.primary_key_col])
+        self.assertEqual(given_rid, old_rid)
+
+        with self.assertRaises(AssertionError):
+            table.index.get_rid(record[self.primary_key_col])
+        table.stop_all_secondary_indices()
+
+    def test_brute_force_search_multiprocessing(self) -> None:
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, self.primary_key_col, bufferpool, secondary_structure=DSAStructure.DICTIONARY_ARRAY, mp=True)
+        RECORD_VALUE = 8
+        records: list[list[int]] = [
+            [1, 2, 3, 4, 1],
+            [4, 1, 2, 2, 32],
+            [2, 6, 5, 1, 1],
+            [3, 2, RECORD_VALUE, 3, 1],
+            [5, 6, RECORD_VALUE, 9, 43],
+            [7, 4, RECORD_VALUE, 9, 4],
+            [8, 1, RECORD_VALUE, 9, 3],
+            [6, 9, RECORD_VALUE, 9, 13],
+        ]
+        for record in records:
+            table.insert_record(record)
+        table.wait_for_async_responses()
+        # retrieving the data that is stored in the secondary index
+        _, expected_rids = table.search_secondary_multiprocessing(RECORD_VALUE, 2)
+        # setting the secondary index to None, and using brute force search
+        brute_search_indices = table.brute_force_search(RECORD_VALUE, 2)
+        self.assertEqual(list(expected_rids), brute_search_indices)
+        table.stop_all_secondary_indices()
+
+    def test_brute_force_search_set_multiprocessing(self) -> None:
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 5, self.primary_key_col, bufferpool, secondary_structure=DSAStructure.DICTIONARY_SET, mp=True)
+        RECORD_VALUE = 8
+        records: list[list[int]] = [
+            [1, 2, 3, 4, 1],
+            [4, 1, 2, 2, 32],
+            [2, 6, 5, 1, 1],
+            [3, 2, RECORD_VALUE, 3, 1],
+            [5, 6, RECORD_VALUE, 9, 43],
+            [7, 4, RECORD_VALUE, 9, 4],
+            [8, 1, RECORD_VALUE, 9, 3],
+            [6, 9, RECORD_VALUE, 9, 13],
+        ]
+        for record in records:
+            table.insert_record(record)
+        table.wait_for_async_responses()
+        # retrieving the data that is stored in the secondary index
+        _, expected_rids = table.search_secondary_multiprocessing(RECORD_VALUE, 2)
+        # setting the secondary index to None, and using brute force search
+        brute_search_indices = table.brute_force_search(RECORD_VALUE, 2)
+        self.assertEqual(list(expected_rids), brute_search_indices)
+        table.stop_all_secondary_indices()
+
+    def test_update_non_existing_record_multiprocessing(self) -> None:
+        bufferpool = self.create_bufferpool()
+        table: Table = Table("table1", 2, self.primary_key_col, bufferpool)
+        with self.assertRaises(AssertionError):
+            table.update_record(1, [90, 14])
 
     # def test_get_latest_column_values_after_insert(self) -> None:
     #     bufferpool = self.create_bufferpool()
