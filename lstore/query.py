@@ -74,9 +74,12 @@ class Query:
         if search_key_index == self.table.primary_key_col:
             ridList: List[int] = [self.table.index.get_rid(search_key)]
         elif self.table.secondary_indices[search_key_index] != None:
-            ridList: Dict[int, int] | List[int] | Set[
-                int
-            ] = self.table.secondary_indices[search_key_index].search_record(search_key)
+            if self.table.multiprocessing:
+                _, ridList = self.table.search_secondary_multiprocessing(search_key, search_key_index)
+            else:
+                ridList: Dict[int, int] | List[int] | Set[
+                    int
+                ] = self.table.search_secondary_serially(search_key, search_key_index)
             if type(ridList) is dict:
                 ridList: List[int] = list(ridList.keys())
         else:

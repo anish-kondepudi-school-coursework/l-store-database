@@ -85,6 +85,10 @@ for key in keys:
     except:
         print('Record Not found', key)
         score -= 1
-print('Score', score, '/', len(keys))
+
+if score != len(keys):
+    raise Exception(f"Did not get perfect score: {score} / {len(keys)}")
+
+print('Perfect Score', score, '/', len(keys))
 
 db.close()

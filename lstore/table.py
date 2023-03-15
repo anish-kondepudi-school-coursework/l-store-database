@@ -10,12 +10,16 @@ from .rid import RID_Generator
 from .page import get_copy_of_base_page
 from .page_range import PageRange
 from .page_directory import PageDirectory
-from .secondary import SecondaryIndex, DSAStructure
-from typing import List
+from .secondary import SecondaryIndex
+from .enums import DSAStructure, Operation
+from typing import List, Tuple, Dict
 import queue
 import threading
 from .bufferpool import Bufferpool
-
+import multiprocessing as mp
+from multiprocessing.synchronize import Event
+from .mp_secondary import AsyncSecondaryIndex
+import time
 
 class Record:
     def __init__(self, rid, key, columns):
@@ -45,7 +49,6 @@ class Table:
         #: note, this will initialize the table with a single page range and all attributes
         with a secondary indices initially
         """
-    # def __init__(self, name: str, num_columns: int, primary_key_col: int, bufferpool: Bufferpool, cumulative=True):
         self.name: str = name
         self.primary_key_col: int = primary_key_col
         self.num_columns: int = num_columns
@@ -53,19 +56,9 @@ class Table:
         self.index: Index = Index(self)
         self.page_directory: PageDirectory = PageDirectory()
         self.rid_generator: RID_Generator = RID_Generator()
-        self.mp = mp
+        self.multiprocessing = mp
         self.cumulative = cumulative
-        self.secondary_indices: list[SecondaryIndex | None] = [
-            SecondaryIndex(
-                self.name,
-                f"attribute_{i}",
-                multiprocess=False,
-                structure=secondary_structure,
-            )
-            if i != self.primary_key_col
-            else None
-            for i in range(self.num_columns)
-        ]
+        self.construct_secondary_indices(secondary_structure)
         self.page_ranges: list[PageRange] = [
             PageRange(
                 self.num_columns, self.page_directory, self.rid_generator, self.name, self.bufferpool, cumulative
@@ -78,6 +71,56 @@ class Table:
         self.merge_thread = threading.Thread(target=self.__merge)
         self.merge_thread.daemon = True
         self.merge_thread.start()
+
+    def construct_secondary_indices(self, secondary_structure: DSAStructure = DSAStructure.DICTIONARY_SET):
+        if self.multiprocessing == False:
+            self.secondary_indices: list[SecondaryIndex | None] = [
+                SecondaryIndex(
+                    self.name,
+                    f"attribute_{i}",
+                    structure=secondary_structure,
+                )
+                if i != self.primary_key_col
+                else None
+                for i in range(self.num_columns)
+            ]
+        else:
+            self.request_queues = [mp.Queue() if i != self.primary_key_col else None for i in range(self.num_columns)]
+            self.response_queues: List[mp.Queue] = [mp.Queue() if i != self.primary_key_col else None for i in range(self.num_columns)]
+            self.stop_events = [mp.Event() if i != self.primary_key_col else None for i in range(self.num_columns)]
+            self.pending_requests: Dict[int: Tuple[Operation, int, int, int]] = {}
+            self.completed_requests: Dict[int: Tuple[Operation, int, int, int]] = {}
+            self.request_id_counter = 0
+            self.secondary_indices: list[AsyncSecondaryIndex | None] = [
+                AsyncSecondaryIndex(
+                    self.name,
+                    f"attribute_{i}",
+                    self.request_queues[i],
+                    self.response_queues[i],
+                    self.stop_events[i],
+                    structure=secondary_structure
+                )
+                if i != self.primary_key_col
+                else None
+                for i in range(self.num_columns)
+            ]
+            for worker in self.secondary_indices:
+                if worker:
+                    worker.start()
+
+    def stop_secondary_index(self, i):
+        self.stop_events[i].set()
+        self.secondary_indices[i].join()
+        self.secondary_indices[i] = None
+        self.stop_events[i] = None
+        self.request_queues[i] = None
+        self.response_queues[i] = None
+
+    def stop_all_secondary_indices(self):
+        for i in range(self.num_columns):
+            if i != self.primary_key_col and self.secondary_indices[i]:
+                self.stop_secondary_index(i)
+            else: continue
 
     def prepare_unpickle(self):
         self.continue_merge = True
@@ -99,9 +142,28 @@ class Table:
         self.merge_queue = None
         self.stop_merging = None
         self.merge_thread = None
-        for secondary in self.secondary_indices:
-            if secondary:
-                secondary.save_index()
+        if self.multiprocessing:
+            self.save_indices()
+            self.stop_all_secondary_indices()
+        else:
+            for secondary in self.secondary_indices:
+                if secondary:
+                    secondary.save_index()
+
+    def save_indices(self) -> None:
+        request_ids = []
+        for request_queue in self.request_queues:
+            if request_queue:
+                request_id = self.get_next_request_id()
+                request = (Operation.SAVE_INDEX, 0, 0, request_id)
+                self.pending_requests[request_id] = request
+                request_queue.put([request])
+                request_ids.append(request_id)
+
+        responses = self.wait_for_async_responses()
+        statuses = [response[1] if response and response[0] and response[0][3] in request_ids else None for response in responses]
+        return statuses
+
 
     def delete_record(self, primary_key: int) -> None:
         """
@@ -112,12 +174,26 @@ class Table:
         vals = page_range.invalidate_record(
             rid, [i != None for i in self.secondary_indices]
         )
-        for i, val in enumerate(vals):
-            if val == None:
-                continue
-            self.secondary_indices[i].delete_record(val, rid)
+        if self.multiprocessing:
+            self.delete_secondary_record_async(rid, vals)
+        else:
+            for i, val in enumerate(vals):
+                if val == None:
+                    continue
+                self.secondary_indices[i].delete_record(val, rid)
         self.index.delete_key(primary_key)
-        self.page_directory.delete_page(primary_key)
+
+    def delete_secondary_record_async(self, rid, vals):
+        for i, attribute in enumerate(vals):
+            if i == self.primary_key_col or self.secondary_indices[i] == None:
+                continue
+            try:
+                request_id = self.get_next_request_id()
+                request: Tuple[Operation, int, int, int] = (Operation.DELETE_RECORD, attribute, rid, request_id)
+                self.pending_requests[request_id] = request
+                self.request_queues[i].put([request])
+            except Exception as e:
+                print("error", e)
 
     def insert_record(self, columns: list) -> bool:
         """
@@ -142,8 +218,8 @@ class Table:
             rid_from_insertion: int = last_page_range.insert_record(columns)
         if rid_from_insertion != INVALID_RID:
             self.index.add_key_rid(columns[self.primary_key_col], rid_from_insertion)
-            if self.mp:
-                pass
+            if self.multiprocessing:
+                self.update_secondary_indices_multiprocessing(columns, rid_from_insertion)
             else:
                 self.update_secondary_indices_serially(columns, rid_from_insertion)
             return True
@@ -164,6 +240,29 @@ class Table:
             if attribute_value == search_key:
                 matching_rids.append(rid)
         return matching_rids
+
+    def update_secondary_indices_multiprocessing(self, columns: list[int], rid: int) -> None:
+        """
+        #: updates secondary indices in parallel and asynchoronously
+        #: operation IDs are saved to check at later point in time if the operation has completed
+        """
+        for i, attribute in enumerate(columns):
+            if (
+                i != self.primary_key_col
+                and attribute != None
+                and self.secondary_indices[i] != None
+            ):
+                try:
+                    request_id = self.get_next_request_id()
+                    request: Tuple[Operation, int, int, int] = (Operation.INSERT_RECORD, attribute, rid, request_id)
+                    self.pending_requests[request_id] = request
+                    self.request_queues[i].put([request])
+                except Exception as e:
+                    print("Error in update_secondary_indices_multiprocessing")
+
+    def get_next_request_id(self):
+        self.request_id_counter += 1
+        return self.request_id_counter
 
     def update_secondary_indices_serially(self, columns: list[int], rid: int) -> None:
         for i, attribute in enumerate(columns):
@@ -205,6 +304,60 @@ class Table:
             page_range_with_record.updated_base_pages.clear
         page_range_with_record.prev_tid = tid
         return result
+
+    def search_secondary_serially(self, search_key: int, search_key_index: int) -> List[int]:
+        """
+        #: `search_key` is the value of the secondary attribute
+        #: `search_key_index` is the index of the secondary attribute
+        #: uses the keys within the secondary key indexing structure
+        """
+        return self.secondary_indices[search_key_index].search_record(search_key)
+
+    def search_secondary_multiprocessing(self, search_key: int, search_key_index: int) -> Tuple[Tuple[Operation, int, int, int], List[int] | bool]:
+        """
+        #: `search_key` is the value of the secondary attribute
+        #: `search_key_index` is the index of the secondary attribute
+        #: synchronous search for all records with given key
+        """
+        request_id = self.get_next_request_id()
+        request: Tuple[Operation, int, int, int] = (Operation.SEARCH_RECORD, search_key, search_key_index, request_id)
+        self.pending_requests[request_id] = request
+        self.request_queues[search_key_index].put([request])
+        return request, self.preempt_wait_for_async_response(search_key_index, request_id)
+
+    def preempt_wait_for_async_response(self, search_key_index: int,  request_id: int) -> List[int] | bool | Exception:
+        """
+        #: checks if the request has completed
+        """
+        if request_id in self.completed_requests:
+            response = self.completed_requests[request_id]
+            del self.completed_requests[request_id]
+            return response
+        while True:
+            queue = self.response_queues[search_key_index]
+            if not queue.empty():
+                response_id, response = queue.get()
+                if response_id == request_id:
+                    # no need to return request, it is memory of caller
+                    del self.pending_requests[response_id]
+                    return response
+                else:
+                    self.completed_requests[response_id] = response
+                    del self.pending_requests[response_id]
+
+    def wait_for_async_responses(self) -> List[Tuple[Tuple[Operation, int, int, int], List[int] | bool | Exception]]:
+        responses = []
+        while self.pending_requests:
+            for attribute_index, queue in enumerate(self.response_queues):
+                if queue == None:
+                    continue
+                while not queue.empty():
+                    # removes from queue the request and chekcs their status
+                    # note the checking for status must be modified to retry when failed
+                    response_id, response = queue.get()
+                    original_request = self.pending_requests.pop(response_id)
+                    responses.append((original_request, response))
+        return responses
 
     def get_latest_column_values(
         self, ridList: int | List[int], projected_columns_index: list
