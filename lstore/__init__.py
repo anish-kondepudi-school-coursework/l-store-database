@@ -24,3 +24,5 @@ from .bufferpool import Bufferpool
 from .secondary import SecondaryIndex, DSAStructure
 from .seeding import SeedSet
 from .planner import Planner
+from .mp_secondary import AsyncSecondaryIndex, Operation
+from .enums import DSAStructure, Operation
