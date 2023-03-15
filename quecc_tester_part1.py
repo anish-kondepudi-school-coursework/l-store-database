@@ -91,7 +91,7 @@ for key in keys:
         if column != records[key][i]:
             error = True
     if error:
-        print('select error on', key, ':', record[key], ', correct:', records[key])
+        raise Exception('select error on', key, ':', record[key], ', correct:', records[key])
 print("Select finished")
 
 db.close()

@@ -22,7 +22,7 @@ records = {}
 
 number_of_records = 1000
 number_of_transactions = 100
-number_of_operations_per_record = 5
+number_of_operations_per_record = 10
 num_threads = 8
 
 planner = Planner(grades_table, num_threads)
@@ -32,23 +32,18 @@ keys = []
 records = {}
 seed(3562901)
 
-#print("Starting insert:")
-
-for i in range(0, number_of_records):
-    key = 92106429 + i
-    records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
-    query.insert(*records[key])
-keys = sorted(list(records.keys()))
-#print("Insert finished")
-
-# transaction_workers = []
 transactions = []
 
 for i in range(number_of_transactions):
     transactions.append(Transaction())
 
-# for i in range(num_threads):
-#     transaction_workers.append(TransactionWorker())
+# re-generate records for testing
+for i in range(0, number_of_records):
+    key = 92106429 + i
+    keys.append(key)
+    records[key] = [key, randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20)]
+    # print(records[key])
+
 
 # x update on every column
 for j in range(number_of_operations_per_record):
