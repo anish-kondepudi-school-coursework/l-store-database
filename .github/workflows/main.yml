@@ -48,3 +48,17 @@ jobs:
 
       - name: Run exam m2 tests
         run: rm -r ECS165 ; mkdir ECS165 ; python3 exam_tester_m2_part1.py ; python3 exam_tester_m2_part2.py
+
+  m3-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      - name: Run m3 tests
+        run: mkdir ECS165 ; python3 quecc_tester_part1.py ; python3 quecc_tester_part2.py 
+
