@@ -4,7 +4,7 @@ from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
 from lstore.planner import Planner, Executor
 
-from random import choice, randint, sample, seed
+from random import choice, randint, sample, seed, shuffle
 
 #print("Starting")
 
@@ -63,18 +63,23 @@ for i in range(number_of_transactions):
 # x update on every column
 for j in range(number_of_operations_per_record):
     for key in keys:
+        newKey = key+1
+        if(newKey == keys[-1]+1):
+            newKey=keys[0]
         updated_columns = [None, None, None, None, None]
         for i in range(2, grades_table.num_columns):
             # updated value
             value = randint(0, 20) 
             updated_columns[i] = value
             # copy record to check
-            original = records[key].copy()
+            original = records[newKey].copy()
             # update our test directory
-            records[key][i] = value
+            records[newKey][i] = value
             transactions[key % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
-            transactions[key % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
+            transactions[key % number_of_transactions].add_query(query.update, grades_table, newKey, *updated_columns)
  
+shuffle(transactions)
+
 #print("Planning...")
 groups = planner.plan(transactions)
 #print("Done planning")
