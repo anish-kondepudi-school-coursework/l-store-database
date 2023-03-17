@@ -59,10 +59,12 @@ class AsyncSecondaryIndex(mp.Process):
         while not self.stop_event.is_set():
             if not self.task_queue.empty():
                 # note that requests are batched on the level of the table
-                while not self.task_queue.empty():
+                while not self.task_queue.empty() and not self.stop_event.is_set():
                     # batches contain the operation to be performed, the key, the rid, and the request ID
                     batch: List[Tuple[Operation, int, int, int]] = self.task_queue.get()
                     for request in batch:
+                        if self.stop_event.is_set():
+                            break
                         response = self.perform_operation(request)
                         self.result_queue.put(response)
 
@@ -239,6 +241,7 @@ class AsyncSecondaryIndex(mp.Process):
         """
         if key in self.dictionary:
             vals: Set[int] = self.dictionary[key]
-            vals.remove(rid)
+            if rid in vals:
+                vals.remove(rid)
             if self.seeds:
                 self.seeds.remove(rid)

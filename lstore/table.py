@@ -185,7 +185,7 @@ class Table:
 
     def delete_secondary_record_async(self, rid, vals):
         for i, attribute in enumerate(vals):
-            if i == self.primary_key_col or self.secondary_indices[i] == None:
+            if i == self.primary_key_col or self.secondary_indices[i] == None or attribute == None:
                 continue
             try:
                 request_id = self.get_next_request_id()
@@ -294,10 +294,14 @@ class Table:
         self.index.add_key_rid(newPrimaryKey, rid)
         tid, diff_list = page_range_with_record.update_record(rid, columns)
         result = tid != INVALID_RID
-        for i, (old_attribute, new_attribute) in enumerate(zip(diff_list, columns)):
-            if old_attribute != None and self.secondary_indices[i] != None:
-                self.secondary_indices[i].delete_record(old_attribute, rid)
-                self.secondary_indices[i].add_record(new_attribute, rid)
+        if self.multiprocessing == False:
+            for i, (old_attribute, new_attribute) in enumerate(zip(diff_list, columns)):
+                if old_attribute != None and self.secondary_indices[i] != None:
+                    self.secondary_indices[i].delete_record(old_attribute, rid)
+                    self.secondary_indices[i].add_record(new_attribute, rid)
+        else:
+            self.delete_secondary_record_async(rid, columns)
+            self.update_secondary_indices_multiprocessing(columns, rid)
         if result and page_range_with_record.full_tail_pages.__len__() == 3:
             self.merge_queue.put((page_range_with_record.full_tail_pages.copy(), page_range_with_record.updated_base_pages.copy(), page_range_with_record.prev_tid))
             page_range_with_record.full_tail_pages.clear

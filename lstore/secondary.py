@@ -174,6 +174,7 @@ class SecondaryIndex:
         """
         if key in self.dictionary:
             vals: Set[int] = self.dictionary[key]
-            vals.remove(rid)
+            if rid in vals:
+                vals.remove(rid)
             if self.seeds:
                 self.seeds.remove(rid)

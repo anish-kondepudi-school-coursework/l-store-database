@@ -1,7 +1,6 @@
 from lstore.table import Table, Record
 from typing import List, Set, Dict
 
-
 class Query:
     def __init__(self, table: Table):
         """
