@@ -1,6 +1,7 @@
 from lstore.table import Table
 from lstore.bufferpool import Bufferpool
 from lstore.config import MAX_BUFFERPOOL_SIZE
+from lstore import DSAStructure
 import _pickle as pickle
 import os
 
@@ -30,7 +31,7 @@ class Database:
             self.table_name_to_table[name].prepare_to_be_pickled()
         self.__save_data_to_disk(Database.database_file_name, self.table_name_to_table)
 
-    def create_table(self, name, num_columns, key_index):
+    def create_table(self, name, num_columns, key_index, mp=False):
         """
         # Creates a new table
         :param name: string         #Table name
@@ -39,7 +40,7 @@ class Database:
         """
         if self.bufferpool is None:
             self.bufferpool = Bufferpool(MAX_BUFFERPOOL_SIZE, "")
-        table = Table(name, num_columns, key_index, self.bufferpool)
+        table = Table(name, num_columns, key_index, self.bufferpool, mp=mp)
         self.table_name_to_table[name] = table
         return table
 
